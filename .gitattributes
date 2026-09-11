@@ -1,0 +1,31 @@
+# Normalisasi baris: semua teks disimpan LF di repo, apa pun OS yang menulis.
+* text=auto eol=lf
+
+# Skrip shell wajib LF walau di-checkout di Windows.
+*.sh text eol=lf
+
+# Berkas yang di-generate: disembunyikan dari statistik bahasa dan diringkas di diff GitHub.
+package-lock.json linguist-generated=true
+src/types/contracts/** linguist-generated=true
+
+# Media dan font: biner, jangan pernah dinormalisasi barisnya.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.mp4 binary
+*.webm binary
+*.mov binary
+*.mp3 binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.eot binary
+
+# SVG tetap teks supaya diff-nya terbaca.
+*.svg text eol=lf
