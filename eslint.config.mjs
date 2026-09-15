@@ -22,7 +22,7 @@ const eslintConfig = [
   {
     // src/types/contracts AUTO-GENERATED oleh `npm run sync:contracts` — isinya milik ubsc-api,
     // diperbaiki di sana, bukan di sini.
-    ignores: ['node_modules/**', '.next/**', 'out/**', 'build/**', 'next-env.d.ts', 'src/types/contracts/**']
+    ignores: ['node_modules/**', '.next/**', 'out/**', 'build/**', 'next-env.d.ts', 'src/types/contracts/**', 'tools/fidelity-harness/**']
   },
 
   ...compat.extends('next/core-web-vitals', 'next/typescript'),

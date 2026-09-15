@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>pembanding computed-style</title>
+<style>body{margin:0}iframe{border:0;display:block}</style>
+</head>
+<body>
+<script>
+// ============================================================================
+// Pembanding computed-style: baseline (Laravel v3) vs kandidat (v4), di satu konteks JS.
+// Hasil di window.__result; window.__done = true bila selesai.
+// ============================================================================
+const qs = new URLSearchParams(location.search)
+const W = Number(qs.get('w') || 1280)
+const H = 900
+const FREEZE = '*,*::before,*::after{animation-play-state:paused!important;animation-delay:-0.7s!important;transition:none!important;caret-color:transparent!important}'
+
+function loadFrame(src) {
+  return new Promise((resolve) => {
+    const f = document.createElement('iframe')
+    f.style.width = W + 'px'
+    f.style.height = H + 'px'
+    f.onload = () => resolve(f)
+    f.src = src
+    document.body.appendChild(f)
+  })
+}
+
+// ===== Konversi warna -> sRGB 8-bit + penanda di luar gamut sRGB =====
+const lin2srgb = (c) => (c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055)
+const srgb2lin = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4))
+function oklabToLinSrgb(L, a, b) {
+  const l_ = L + 0.3963377774 * a + 0.2158037573 * b
+  const m_ = L - 0.1055613458 * a - 0.0638541728 * b
+  const s_ = L - 0.0894841775 * a - 1.291485548 * b
+  const l = l_ ** 3, m = m_ ** 3, s = s_ ** 3
+  return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s]
+}
+function p3LinToSrgbLin(r, g, b) {
+  // display-p3 linear -> XYZ D65 -> linear sRGB
+  const X = 0.4865709486 * r + 0.2656676932 * g + 0.1982172852 * b
+  const Y = 0.2289745641 * r + 0.6917385218 * g + 0.0792869141 * b
+  const Z = 0.0 * r + 0.0451133819 * g + 1.0439443689 * b
+  return [3.2409699419 * X - 1.5373831776 * Y - 0.4986107603 * Z, -0.9692436363 * X + 1.8759675015 * Y + 0.0415550574 * Z, 0.0556300797 * X - 0.2039769589 * Y + 1.0569715142 * Z]
+}
+// Chromium menulis hue warna akromatik (neutral/gray murni) sebagai `none` — perlakukan sebagai 0.
+const num = (t, pct100 = 1) => (t === 'none' ? 0 : t.endsWith('%') ? (parseFloat(t) / 100) * pct100 : parseFloat(t))
+const unparsed = new Set()
+
+function parseColor(str) {
+  const s = str.trim().toLowerCase()
+  if (s === 'transparent') return { rgb: [0, 0, 0], a: 0, oog: false }
+  let m
+  if ((m = s.match(/^#([0-9a-f]{3,8})$/))) {
+    let h = m[1]
+    if (h.length <= 4) h = [...h].map((x) => x + x).join('')
+    const v = h.match(/../g).map((x) => parseInt(x, 16))
+    return { rgb: v.slice(0, 3), a: v.length > 3 ? v[3] / 255 : 1, oog: false }
+  }
+  if ((m = s.match(/^(rgba?|oklch|oklab|color)\((.*)\)$/))) {
+    const fn = m[1]
+    const [main, alphaPart] = m[2].includes('/') ? m[2].split('/') : [m[2], null]
+    const parts = main.replace(/,/g, ' ').trim().split(/\s+/)
+    let a = alphaPart != null ? num(alphaPart.trim()) : 1
+    let lin
+    if (fn === 'rgb' || fn === 'rgba') {
+      if (parts.length === 4) a = num(parts[3])
+      const v = parts.slice(0, 3).map((p) => num(p, 255))
+      return { rgb: v, a, oog: false }
+    }
+    if (fn === 'oklch') {
+      const L = num(parts[0]), C = num(parts[1], 0.4), h = (num(parts[2]) * Math.PI) / 180
+      lin = oklabToLinSrgb(L, C * Math.cos(h), C * Math.sin(h))
+    } else if (fn === 'oklab') {
+      lin = oklabToLinSrgb(num(parts[0]), num(parts[1], 0.4), num(parts[2], 0.4))
+    } else if (fn === 'color') {
+      const space = parts[0]
+      const v = parts.slice(1, 4).map((p) => num(p))
+      if (space === 'srgb') lin = v.map(srgb2lin)
+      else if (space === 'srgb-linear') lin = v
+      else if (space === 'display-p3') lin = p3LinToSrgbLin(...v.map(srgb2lin))
+      else { unparsed.add(str); return null }
+    }
+    const oog = lin.some((c) => c < -0.002 || c > 1.002)
+    const rgb = lin.map((c) => Math.round(Math.min(1, Math.max(0, lin2srgb(c))) * 25500) / 100)
+    return { rgb, a, oog }
+  }
+  return null
+}
+const COLOR_RE = /#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|oklch|oklab|color)\((?:[^()]|\([^()]*\))*\)|\btransparent\b/g
+const canon = (c) => `rgba(${c.rgb.map((x) => Math.round(x)).join(',')},${Math.round(c.a * 255)})${c.oog ? '!oog' : ''}`
+
+function normValue(prop, v) {
+  if (v == null) return v
+  let out = v.replace(COLOR_RE, (tok) => {
+    const c = parseColor(tok)
+    if (!c) { unparsed.add(tok); return tok }
+    return canon(c)
+  })
+  if (prop === 'font-family') out = out.replace(/["']/g, '').replace(/\s*,\s*/g, ',')
+  if (/background-image|mask-image|border-image/.test(prop)) {
+    // "to right in srgb" setara dengan "to right" untuk stop berwarna legacy (rgb/hex) — ruang
+    // interpolasi default gradien legacy adalah sRGB (CSS Images 4). "in oklab" TIDAK dinormalkan.
+    out = out.replace(/ in srgb\b/g, '')
+    out = out.replace(/(repeating-)?(linear|radial|conic)-gradient\(((?:[^()]|\([^()]*\))*)\)/g, (m, rep, kind, inner) => `${rep || ''}${kind}-gradient(${resolveStops(inner)})`)
+  }
+  if (prop === 'box-shadow' || prop === 'text-shadow') {
+    // Buang lapisan yang tidak merender apa pun: transparan, ATAU offset/blur/spread semuanya nol
+    // (warna apa pun). v3 menyusun 3 lapisan kosong, v4 menyusun 5 — jumlahnya bukan perbedaan visual.
+    const layers = splitTop(out).filter((l) => {
+      const t = l.trim()
+      if (/rgba\(\d+,\d+,\d+,0\)/.test(t) && !/rgba\(\d+,\d+,\d+,[1-9]/.test(t)) return false
+      const lengths = t.replace(/rgba\([^)]*\)(!oog)?/g, '').replace(/inset/g, '').trim().split(/\s+/).filter(Boolean)
+      return !lengths.every((x) => parseFloat(x) === 0)
+    })
+    out = layers.length ? layers.map((x) => x.trim()).join(', ') : 'none'
+  }
+  if (prop === 'justify-self' || prop === 'justify-items' || prop === 'align-self' || prop === 'align-items') {
+    // Di konteks grid/blok, flex-end berperilaku sebagai end (CSS Box Alignment).
+    out = out.replace(/\bflex-end\b/, 'end').replace(/\bflex-start\b/, 'start')
+  }
+  if (/radius/.test(prop)) {
+    // 9999px (v3) vs calc(infinity * 1px) (v4): keduanya melampaui setengah ukuran elemen apa pun.
+    out = out.replace(/-?\d+(\.\d+)?(e\+\d+)?px/g, (x) => (parseFloat(x) >= 9999 ? 'FULLpx' : x))
+  }
+  // Rapikan noise float: 12.000001px -> 12px
+  out = out.replace(/-?\d+\.\d{4,}/g, (x) => String(Math.round(parseFloat(x) * 1000) / 1000))
+  return out
+}
+// Posisi stop gradien: v3 (minifier) membuang posisi yang sama dengan posisi implisit, v4 menuliskannya
+// ("a, b, c" vs "a 0%, b 50%, c 100%"). Keduanya dirender identik — samakan dengan menulis SEMUA posisi
+// secara eksplisit sesuai aturan CSS Images: stop pertama 0%, terakhir 100%, sisanya dibagi rata di
+// antara tetangga yang posisinya diketahui. Hanya menangani posisi persen tunggal; yang lain dibiarkan.
+function resolveStops(inner) {
+  const parts = splitTop(inner).map((p) => p.trim())
+  const isDirection = (p) => /^(to |from |at |\d+(\.\d+)?(deg|turn|rad|grad)|circle|ellipse|closest|farthest)/.test(p) && !/rgba\(/.test(p)
+  const head = parts.length && isDirection(parts[0]) ? [parts.shift()] : []
+  const stops = parts.map((p) => {
+    const m = p.match(/^(rgba\([^)]*\)(?:!oog)?)(?:\s+(-?\d+(?:\.\d+)?)%)?$/)
+    return m ? { color: m[1], pos: m[2] === undefined ? null : parseFloat(m[2]) } : null
+  })
+  if (!stops.length || stops.some((s) => s === null)) return inner
+  if (stops[0].pos === null) stops[0].pos = 0
+  if (stops[stops.length - 1].pos === null) stops[stops.length - 1].pos = 100
+  for (let i = 1; i < stops.length - 1; i++) {
+    if (stops[i].pos !== null) continue
+    let j = i
+    while (stops[j].pos === null) j++
+    const start = stops[i - 1].pos, end = stops[j].pos, span = j - (i - 1)
+    for (let k = i; k < j; k++) stops[k].pos = start + ((end - start) * (k - (i - 1))) / span
+  }
+  return [...head, ...stops.map((s) => `${s.color} ${Math.round(s.pos * 100) / 100}%`)].join(', ')
+}
+
+function splitTop(s) {
+  const out = []
+  let depth = 0, cur = ''
+  for (const ch of s) {
+    if (ch === '(') depth++
+    if (ch === ')') depth--
+    if (ch === ',' && depth === 0) { out.push(cur); cur = ''; continue }
+    cur += ch
+  }
+  if (cur) out.push(cur)
+  return out
+}
+
+// ===== Transform efektif (transform + translate + rotate + scale) =====
+function borderBox(cs, el) {
+  // offsetWidth dibulatkan ke bilangan bulat; translate persen butuh ukuran border-box presisi.
+  const f = (p) => parseFloat(cs.getPropertyValue(p)) || 0
+  let w = parseFloat(cs.getPropertyValue('width')), h = parseFloat(cs.getPropertyValue('height'))
+  if (Number.isNaN(w) || Number.isNaN(h)) return [el ? el.offsetWidth : 0, el ? el.offsetHeight : 0]
+  if (cs.getPropertyValue('box-sizing') === 'content-box') {
+    w += f('padding-left') + f('padding-right') + f('border-left-width') + f('border-right-width')
+    h += f('padding-top') + f('padding-bottom') + f('border-top-width') + f('border-bottom-width')
+  }
+  return [w, h]
+}
+
+function composed(cs, el) {
+  const [w, h] = el ? borderBox(cs, el) : [0, 0]
+  let m = new DOMMatrix()
+  const tr = cs.getPropertyValue('translate')
+  if (tr && tr !== 'none') {
+    const p = tr.split(/\s+/)
+    const px = (t, base) => (t.endsWith('%') ? (parseFloat(t) / 100) * base : parseFloat(t))
+    m = m.translate(px(p[0], w), p[1] ? px(p[1], h) : 0, p[2] ? parseFloat(p[2]) : 0)
+  }
+  const ro = cs.getPropertyValue('rotate')
+  if (ro && ro !== 'none') {
+    const deg = parseFloat(ro.split(/\s+/).pop())
+    m = m.rotate(0, 0, deg)
+  }
+  const sc = cs.getPropertyValue('scale')
+  if (sc && sc !== 'none') {
+    const p = sc.split(/\s+/).map(parseFloat)
+    m = m.scale(p[0], p[1] ?? p[0], p[2] ?? 1)
+  }
+  const t = cs.getPropertyValue('transform')
+  if (t && t !== 'none') m = m.multiply(new DOMMatrix(t))
+  return [m.a, m.b, m.c, m.d, m.e, m.f].map((x) => Math.round(x * 100) / 100).join(',')
+}
+
+// Properti yang dibandingkan lewat komposisi di atas, bukan satu per satu.
+const TRANSFORM_PROPS = new Set(['transform', 'translate', 'rotate', 'scale'])
+
+function propList(doc) {
+  const cs = doc.defaultView.getComputedStyle(doc.body)
+  const list = []
+  for (let i = 0; i < cs.length; i++) {
+    const p = cs[i]
+    if (p.startsWith('--')) continue
+    if (TRANSFORM_PROPS.has(p)) continue
+    list.push(p)
+  }
+  return list
+}
+
+// Outline yang tidak terlihat di kedua sisi: v3 `outline-none` = outline solid 2px TRANSPARAN,
+// v4 `outline-hidden` = outline-style none. Keduanya tak merender apa pun (dan di forced-colors v4
+// memulihkan outline transparan yang sama), jadi selisih outline-* di antaranya bukan perbedaan visual.
+function outlineInvisible(cs) {
+  if (cs.getPropertyValue('outline-style') === 'none') return true
+  if (parseFloat(cs.getPropertyValue('outline-width')) === 0) return true
+  const c = parseColor(cs.getPropertyValue('outline-color'))
+  return c ? c.a === 0 : false
+}
+
+function diffStyles(csA, csB, props, where, out, elA, elB) {
+  const bothOutlineHidden = outlineInvisible(csA) && outlineInvisible(csB)
+  // sr-only: v3 memakai clip:rect(0,0,0,0), v4 clip-path:inset(50%) — keduanya memotong habis elemen 1x1px.
+  const tiny = (el) => el && el.getBoundingClientRect().width <= 1 && el.getBoundingClientRect().height <= 1
+  const bothTiny = tiny(elA) && tiny(elB)
+  for (const p of props) {
+    const a = csA.getPropertyValue(p), b = csB.getPropertyValue(p)
+    if (a === b) continue
+    if (bothOutlineHidden && p.startsWith('outline')) continue
+    if (bothTiny && (p === 'clip' || p === 'clip-path')) continue
+    const na = normValue(p, a), nb = normValue(p, b)
+    if (na === nb) continue
+    out.push({ ...where, prop: p, a, b, na, nb })
+  }
+  const ta = composed(csA, elA), tb = composed(csB, elB)
+  if (ta !== tb) out.push({ ...where, prop: '(transform efektif)', a: ta, b: tb, na: ta, nb: tb })
+}
+
+function keyframesOf(doc) {
+  const map = new Map()
+  const walk = (rules) => {
+    for (const r of rules) {
+      if (r.type === CSSRule.KEYFRAMES_RULE) {
+        const frames = []
+        for (const k of r.cssRules) {
+          const decl = []
+          for (let i = 0; i < k.style.length; i++) {
+            const p = k.style[i]
+            let v = k.style.getPropertyValue(p)
+            // Minifier v3 menulis translate3d(0,0,0) sebagai translateZ(0px); v4 membiarkannya.
+            // Transform yang identik harus dibandingkan sebagai matriks, bukan sebagai teks.
+            if (p === 'transform' && v && v !== 'none' && !/var\(/.test(v)) {
+              try {
+                const m = new DOMMatrix(v)
+                v = [m.m11, m.m12, m.m13, m.m14, m.m21, m.m22, m.m23, m.m24, m.m31, m.m32, m.m33, m.m34, m.m41, m.m42, m.m43, m.m44].map((x) => Math.round(x * 1000) / 1000).join(',')
+              } catch (e) { /* biarkan teks aslinya (mis. mengandung calc atau persen) */ }
+            }
+            decl.push(p + ':' + normValue(p, v))
+          }
+          frames.push(k.keyText.replace(/\s+/g, '') + '{' + decl.sort().join(';') + '}')
+        }
+        map.set(r.name, frames.join(' '))
+      } else if (r.cssRules) {
+        walk(r.cssRules)
+      }
+    }
+  }
+  for (const sheet of doc.styleSheets) {
+    try { walk(sheet.cssRules) } catch (e) { /* stylesheet lintas origin */ }
+  }
+  return map
+}
+
+;(async () => {
+  const [fa, fb] = await Promise.all([loadFrame('/baseline.html'), loadFrame('/candidate.html')])
+  const A = fa.contentDocument, B = fb.contentDocument
+  // FREEZE sudah ada di <head> kedua halaman sejak render pertama (lihat build-pages.mjs).
+  await Promise.all([A.fonts.ready, B.fonts.ready])
+  // Beri satu frame supaya style hasil freeze ter-apply.
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+
+  const props = propList(A)
+  const cellsA = A.querySelectorAll('[data-cell]'), cellsB = B.querySelectorAll('[data-cell]')
+  const diffs = []
+  const structural = []
+
+  for (let i = 0; i < cellsA.length; i++) {
+    const ca = cellsA[i], cb = cellsB[i]
+    const id = ca.dataset.cell
+    if (!cb || cb.dataset.cell !== id) { structural.push(`sel ke-${i} tidak sejajar: ${id} vs ${cb && cb.dataset.cell}`); continue }
+    const pa = ca.querySelectorAll('[data-probe]'), pb = cb.querySelectorAll('[data-probe]')
+    const ra0 = ca.getBoundingClientRect(), rb0 = cb.getBoundingClientRect()
+    for (let j = 0; j < pa.length; j++) {
+      const ea = pa[j], eb = pb[j]
+      const where = { cell: id, label: ca.title, probe: j }
+      const winA = A.defaultView, winB = B.defaultView
+      diffStyles(winA.getComputedStyle(ea), winB.getComputedStyle(eb), props, { ...where, pseudo: '' }, diffs, ea, eb)
+      // Warna placeholder adalah salah satu hazard kompat v3 -> v4 yang disebut Rewrite.md.
+      if (ea.tagName === 'INPUT' || ea.tagName === 'TEXTAREA') {
+        diffStyles(winA.getComputedStyle(ea, '::placeholder'), winB.getComputedStyle(eb, '::placeholder'), ['color', 'opacity'], { ...where, pseudo: '::placeholder' }, diffs, null, null)
+      }
+      for (const ps of ['::before', '::after']) {
+        const sa = winA.getComputedStyle(ea, ps), sb = winB.getComputedStyle(eb, ps)
+        // Pseudo-element hanya relevan bila ada content di salah satu sisi.
+        if (sa.getPropertyValue('content') === 'none' && sb.getPropertyValue('content') === 'none') continue
+        diffStyles(sa, sb, props, { ...where, pseudo: ps }, diffs, null, null)
+      }
+      const ra = ea.getBoundingClientRect(), rb = eb.getBoundingClientRect()
+      const rect = (r, o) => [r.left - o.left, r.top - o.top, r.width, r.height].map((x) => Math.round(x * 10) / 10)
+      const qa = rect(ra, ra0), qb = rect(rb, rb0)
+      if (qa.some((x, k) => Math.abs(x - qb[k]) > 0.6)) diffs.push({ ...where, pseudo: '', prop: '(kotak render)', a: qa.join(' '), b: qb.join(' '), na: qa.join(' '), nb: qb.join(' ') })
+    }
+  }
+
+  // Elemen root: html & body (base layer: font-bdo, background #252525, antialiased).
+  for (const tag of ['html', 'body']) {
+    diffStyles(A.defaultView.getComputedStyle(A.querySelector(tag)), B.defaultView.getComputedStyle(B.querySelector(tag)), props, { cell: 'root', label: `<${tag}>`, probe: 0, pseudo: '' }, diffs, null, null)
+  }
+
+  // @keyframes — struktural via CSSOM.
+  const ka = keyframesOf(A), kb = keyframesOf(B)
+  const keyframeDiffs = []
+  for (const [name, body] of ka) {
+    if (!kb.has(name)) keyframeDiffs.push({ name, issue: 'HILANG di kandidat' })
+    else if (kb.get(name) !== body) keyframeDiffs.push({ name, issue: 'BERBEDA', a: body, b: kb.get(name) })
+  }
+  for (const name of kb.keys()) if (!ka.has(name)) keyframeDiffs.push({ name, issue: 'hanya ada di kandidat' })
+
+  window.__result = { width: W, cells: cellsA.length, props: props.length, diffs, structural, keyframeDiffs, unparsed: [...unparsed].slice(0, 50) }
+  window.__done = true
+})()
+</script>
+</body>
+</html>
