@@ -25,6 +25,9 @@ const TEXT = '"BDO Grotesk", sans-serif'
 function loadImage(src: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image()
+    // Foto member di produksi datang dari CDN (domain lain). Tanpa mode CORS, canvas jadi "tainted" dan
+    // unduhan PNG gagal; dengan mode CORS, CDN tanpa Access-Control-Allow-Origin hanya menghilangkan fotonya.
+    img.crossOrigin = 'anonymous'
     img.onload = () => resolve(img)
     img.onerror = () => resolve(null)
     img.src = src

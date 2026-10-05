@@ -5,7 +5,7 @@ import axiosInstance from '@/lib/axios'
 import type { ApiSuccess, PaymentBankDto, PaymentQrisDto, TransferPaymentDto } from '@/types/contracts/contracts'
 import { useMutation } from '@tanstack/react-query'
 import { Copy, Download, Info, Upload } from 'lucide-react'
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from 'react'
 
 // ===== Bagian halaman bayar transfer manual =====
 // Dipakai halaman bayar booking (/booking/{id}/pembayaran) dan membership (/membership/{id}/pembayaran)
@@ -96,6 +96,26 @@ export function Banner({ tone, icon, children }: { tone: 'ok' | 'warn' | 'bad' |
 }
 
 /**
+ * Atribut `download` diabaikan browser untuk URL beda domain (gambar QRIS di CDN R2), jadi gambarnya
+ * diambil sebagai blob dulu. Gagal (mis. CDN tanpa header CORS): buka gambarnya di tab baru.
+ */
+async function downloadQris(event: MouseEvent<HTMLAnchorElement>, url: string): Promise<void> {
+  event.preventDefault()
+  try {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(String(res.status))
+    const href = URL.createObjectURL(await res.blob())
+    const link = document.createElement('a')
+    link.href = href
+    link.download = 'qris-ub-sport-center.png'
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(href), 1000)
+  } catch {
+    window.open(url, '_blank', 'noopener')
+  }
+}
+
+/**
  * Cara bayar + nominal yang harus dibayar persis. QRIS statis merchant (keputusan client 2026-10-01)
  * bila admin sudah mengunggahnya: pelanggan memindai lalu MENGETIK nominal sendiri. Rekening bank
  * hanya cadangan saat QRIS belum ada.
@@ -117,6 +137,7 @@ export function TransferInstructions({ bank, qris, payment }: { bank: PaymentBan
             <a
               href={qris.imageUrl}
               download="qris-ub-sport-center.png"
+              onClick={(event) => void downloadQris(event, qris.imageUrl)}
               className="inline-flex items-center gap-1.5 rounded-lg bg-white/8 px-3 py-1.5 font-bdo text-xs font-semibold text-white/80 transition hover:bg-white/15"
             >
               <Download className="h-3.5 w-3.5" />

@@ -9,6 +9,10 @@ const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4020'
 const apiUrl = new URL(API_BASE_URL)
 const apiProtocol = apiUrl.protocol === 'https:' ? 'https' : 'http'
 
+// Domain bucket R2 publik. Di produksi API menyajikan URL unggahan sebagai
+// https://cdn.ubsportcenter.co.id/uploads/... (R2_PUBLIC_URL API harus sama dengan nilai ini).
+const MEDIA_URL = process.env.NEXT_PUBLIC_MEDIA_URL
+
 const nextConfig: NextConfig = {
   // R10: seluruh URL halaman wajib dibangun lewat src/config/routes.ts, dan typedRoutes yang menegakkannya
   // di level tipe (Link href jadi union route yang benar-benar ada, bukan string bebas).
@@ -36,15 +40,15 @@ const nextConfig: NextConfig = {
     ],
 
     // Cadangan untuk kasus API mengembalikan URL absolut ke /uploads (mis. landing dan API beda origin,
-    // atau saat menunjuk langsung ke http://localhost:4020 tanpa lewat proxy).
-    // TODO Fase 2: tambahkan host CDN/produksi di sini bila upload dipindah keluar dari server aplikasi.
+    // atau saat menunjuk langsung ke http://localhost:4020 tanpa lewat proxy), plus CDN R2 di produksi.
     remotePatterns: [
       {
         protocol: apiProtocol,
         hostname: apiUrl.hostname,
         port: apiUrl.port,
         pathname: '/uploads/**'
-      }
+      },
+      ...(MEDIA_URL ? [{ protocol: 'https' as const, hostname: new URL(MEDIA_URL).hostname, pathname: '/uploads/**' }] : [])
     ]
   },
 
