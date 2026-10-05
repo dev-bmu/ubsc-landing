@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { AUTH_ENDPOINTS } from '@/config/api'
+import type { AuthUser } from '@/types/api/auth'
 
 // Perluas config axios supaya punya penanda _retry.
 declare module 'axios' {
@@ -18,29 +19,39 @@ interface ApiEnvelope<T> {
   data: T
 }
 
-interface RefreshData {
+export interface RefreshData {
   accessToken: string
+  user: AuthUser
 }
 
 // ===== State token =====
 // Access token hanya hidup di memori — tidak pernah masuk localStorage.
 let accessToken: string | undefined
-let isRefreshing = false
-let refreshSubscribers: ((token: string) => void)[] = []
-
-function onRefreshed(token: string) {
-  refreshSubscribers.forEach((cb) => cb(token))
-  refreshSubscribers = []
-}
-
-function addRefreshSubscriber(cb: (token: string) => void) {
-  refreshSubscribers.push(cb)
-}
+let refreshInFlight: Promise<RefreshData> | null = null
 
 const axiosInstance = axios.create({
   baseURL: '/api',
   withCredentials: true
 })
+
+/**
+ * Pulihkan / perpanjang sesi lewat cookie refresh. SATU request per tab pada satu waktu: pemanggil
+ * yang datang saat refresh masih berjalan (AuthContext saat halaman dimuat, interceptor 401) menunggu
+ * promise yang sama. Dua refresh paralel dengan token yang sama dibaca server sebagai pencurian token
+ * (reuse detection) dan semua sesi dicabut.
+ */
+export function refreshSession(): Promise<RefreshData> {
+  refreshInFlight ??= axiosInstance
+    .post<ApiEnvelope<RefreshData>>(AUTH_ENDPOINTS.refresh)
+    .then((res) => {
+      accessToken = res.data.data.accessToken
+      return res.data.data
+    })
+    .finally(() => {
+      refreshInFlight = null
+    })
+  return refreshInFlight
+}
 
 // ===== Pengalihan saat sesi habis =====
 // Landing SENGAJA tidak punya halaman /login. Form login hidup di AuthModal yang dibuka
@@ -68,9 +79,8 @@ axiosInstance.interceptors.request.use((config) => {
 })
 
 // ===== Interceptor refresh single-flight =====
-// Dipertahankan apa adanya dari boilerplate: saat banyak request kena 401 bersamaan,
-// hanya SATU panggilan refresh yang ditembakkan, sisanya antre di refreshSubscribers
-// lalu diulang dengan token baru.
+// Saat banyak request kena 401 bersamaan, semuanya menunggu SATU refreshSession() lalu diulang
+// dengan token baru.
 //
 // Path-nya datang dari AUTH_ENDPOINTS ('/auth/customer/...'), bukan '/auth/...' polos milik
 // boilerplate admin: audience di ubsc-api adalah segmen URL, dan path lama membalas 404.
@@ -89,36 +99,13 @@ axiosInstance.interceptors.response.use(
         return Promise.reject(error)
       }
 
-      if (!originalRequest?._retry) {
-        if (isRefreshing) {
-          return new Promise((resolve) => {
-            addRefreshSubscriber((token) => {
-              if (originalRequest?.headers) {
-                originalRequest.headers.Authorization = `Bearer ${token}`
-              }
-              resolve(axiosInstance(originalRequest!))
-            })
-          })
-        }
-
+      if (originalRequest && !originalRequest._retry) {
         originalRequest._retry = true
-        isRefreshing = true
-
         try {
-          const { data } = await axiosInstance.post<ApiEnvelope<RefreshData>>(AUTH_ENDPOINTS.refresh)
-          accessToken = data.data.accessToken
-
-          isRefreshing = false
-          if (accessToken) {
-            onRefreshed(accessToken)
-          }
-
-          if (originalRequest?.headers && accessToken) {
-            originalRequest.headers.Authorization = `Bearer ${accessToken}`
-          }
-          return axiosInstance(originalRequest!)
+          const { accessToken: token } = await refreshSession()
+          if (originalRequest.headers) originalRequest.headers.Authorization = `Bearer ${token}`
+          return axiosInstance(originalRequest)
         } catch (err) {
-          isRefreshing = false
           accessToken = undefined
           redirectToLogin()
           return Promise.reject(err)

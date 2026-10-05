@@ -1,22 +1,15 @@
 'use client'
 
-import axiosInstance, { setAccessToken } from '@/lib/axios'
-import { AUTH_ENDPOINTS } from '@/config/api'
+import axiosInstance, { refreshSession, setAccessToken } from '@/lib/axios'
+import { AUTH_ENDPOINTS, CUSTOMER_SESSION_COOKIE } from '@/config/api'
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import type { AuthUser } from '@/types/api/auth'
 
-// ===== Tipe respons =====
-// Envelope API baru: { success, data }. Endpoint refresh mengembalikan data.accessToken
-// dan data.user.
-// TODO Fase 1: ganti dengan tipe resmi dari '@/types/contracts' setelah sync:contracts.
-interface ApiEnvelope<T> {
-  success: boolean
-  data: T
-}
-
-interface RefreshData {
-  accessToken: string
-  user: AuthUser
+/** Cookie penanda sesi (non-httpOnly, dipasang API saat login). Tanpanya tidak ada sesi untuk dipulihkan. */
+function hasSessionHint(): boolean {
+  return document.cookie
+    .split('; ')
+    .some((part) => part.startsWith(`${CUSTOMER_SESSION_COOKIE}=`) && part.length > CUSTOMER_SESSION_COOKIE.length + 1)
 }
 
 interface AuthContextType {
@@ -36,16 +29,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Access token hanya hidup di memori — pulihkan sesi dari cookie refresh httpOnly
     // ubsc_c_refresh, yang ber-Path=/api/auth sehingga hanya ikut pada panggilan auth ini.
     const checkUserStatus = async () => {
+      // Tamu: tidak ada sesi untuk dipulihkan — langsung selesai, tanpa request dan tanpa jeda.
+      if (!hasSessionHint()) {
+        setIsLoading(false)
+        return
+      }
       try {
-        const { data } = await axiosInstance.post<ApiEnvelope<RefreshData>>(AUTH_ENDPOINTS.refresh)
-        setAccessToken(data.data.accessToken)
+        const { user: restored } = await refreshSession()
         setUser({
-          id: data.data.user.id,
-          name: data.data.user.name,
-          email: data.data.user.email,
-          role: data.data.user.role,
-          permissions: Array.isArray(data.data.user.permissions) ? data.data.user.permissions : undefined,
-          emailVerifiedAt: data.data.user.emailVerifiedAt
+          id: restored.id,
+          name: restored.name,
+          email: restored.email,
+          role: restored.role,
+          permissions: Array.isArray(restored.permissions) ? restored.permissions : undefined,
+          emailVerifiedAt: restored.emailVerifiedAt
         })
       } catch {
         setAccessToken(null)

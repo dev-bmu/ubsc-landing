@@ -303,6 +303,12 @@ html.lenis {
 
 /* Exit state: stage fades, curtains split and slide away */
 
+/* Begitu tirai mulai terbuka, halaman di bawahnya harus sudah bisa diklik — loader masih menempel
+   ~0,7 detik sampai dilepas dari DOM, dan tanpa ini ia menelan klik navbar. */
+.entrance-loader--exit {
+    pointer-events: none;
+}
+
 .entrance-loader--exit .entrance-stage {
     opacity: 0;
     transform: translate3d(0, -2vh, 0) scale(0.97);

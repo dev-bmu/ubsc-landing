@@ -1,6 +1,6 @@
 'use client'
 
-import { type CSSProperties, useEffect, useState } from 'react'
+import { type CSSProperties, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 interface EntranceLoaderProps {
@@ -35,25 +35,33 @@ export function EntranceLoader({ onComplete, onExitStart }: EntranceLoaderProps)
 
   const [mounted, setMounted] = useState(false)
 
+  // Callback terbaru TANPA menjadikannya dependency effect. Hero mengopernya sebagai arrow function
+  // inline (identitas baru di setiap render Hero), dan dulu itu me-restart kedua timer di tiap render:
+  // loader layar penuh (z-index 9999) tertahan di fase exit — tak terlihat, tapi menelan klik navbar.
+  const callbacks = useRef({ onComplete, onExitStart })
+  useEffect(() => {
+    callbacks.current = { onComplete, onExitStart }
+  })
+
   useEffect(() => {
     setMounted(true)
     // Start exit phase after intro animations complete
     const exitTimer = window.setTimeout(() => {
       setPhase('exit')
-      onExitStart?.()
+      callbacks.current.onExitStart?.()
     }, 1480)
 
     // Fully remove after curtain animation
     const doneTimer = window.setTimeout(() => {
       setPhase('done')
-      onComplete()
+      callbacks.current.onComplete()
     }, 2140)
 
     return () => {
       window.clearTimeout(exitTimer)
       window.clearTimeout(doneTimer)
     }
-  }, [onComplete, onExitStart])
+  }, [])
 
   if (phase === 'done' || !mounted) return null
 

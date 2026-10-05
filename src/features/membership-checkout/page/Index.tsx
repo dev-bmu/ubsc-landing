@@ -96,7 +96,7 @@ export function MembershipCheckoutPage({ planId }: { planId: string }) {
               Pilih paket, kirim foto wajah, lalu bayar. Membership aktif setelah admin memverifikasi pembayaran.
             </p>
 
-            <Stepper current={locked ? 0 : photoReady ? 3 : 2} />
+            <Stepper current={locked ? 0 : photoReady || data.pendingMembershipId ? 3 : 2} />
 
             {data.pendingMembershipId && (
               <Banner tone="warn" icon={<Clock className="h-5 w-5" />}>
@@ -184,18 +184,37 @@ export function MembershipCheckoutPage({ planId }: { planId: string }) {
                 <div className="mt-5">
                   <AuthGate>
                     {error && <p className="mb-3 font-bdo text-sm text-rose-400">{error}</p>}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setError(null)
-                        checkout.mutate()
-                      }}
-                      disabled={checkout.isPending || blocker !== null}
-                      className="w-full rounded-full bg-accent-red px-6 py-3 font-bdo text-sm font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      {checkout.isPending ? 'Memproses…' : 'Lanjut ke Pembayaran'}
-                    </button>
-                    {blocker && <p className="mt-2 text-center font-bdo text-xs text-white/50">{blocker}</p>}
+                    {data.pendingMembershipId ? (
+                      // Masih ada pembelian yang menunggu pembayaran: pembelian baru tidak dibuat sampai yang ini
+                      // selesai atau kedaluwarsa. Dulu tombolnya tetap 'Lanjut ke Pembayaran' dan diam-diam kembali ke
+                      // pembelian lama, sehingga terlihat seperti bisa mendaftar dua kali.
+                      <>
+                        <a
+                          href={routes.membershipPayment(data.pendingMembershipId)}
+                          className="block w-full rounded-full bg-accent-red px-6 py-3 text-center font-bdo text-sm font-bold text-white transition hover:opacity-90"
+                        >
+                          Lanjutkan Pembayaran yang Tertunda
+                        </a>
+                        <p className="mt-2 text-center font-bdo text-xs text-white/50">
+                          Pembelian baru bisa dibuat setelah pembayaran itu selesai atau kedaluwarsa.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setError(null)
+                            checkout.mutate()
+                          }}
+                          disabled={checkout.isPending || blocker !== null}
+                          className="w-full rounded-full bg-accent-red px-6 py-3 font-bdo text-sm font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {checkout.isPending ? 'Memproses…' : 'Lanjut ke Pembayaran'}
+                        </button>
+                        {blocker && <p className="mt-2 text-center font-bdo text-xs text-white/50">{blocker}</p>}
+                      </>
+                    )}
                   </AuthGate>
                 </div>
 

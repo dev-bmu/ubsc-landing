@@ -161,7 +161,7 @@ function KineticNavLink({ item, isActive }: KineticNavLinkProps) {
 ==================================================================== */
 export function Navbar({ activeSection = 'Home', showInfoBanner = true, announcements }: NavbarProps) {
   /* ── Auth state ── */
-  const { user, logout } = useAuth()
+  const { user, logout, isLoading: authLoading } = useAuth()
   const isLoggedIn = !!user
 
   /* ── Pending payment (per audit: TanStack Query, bukan usePage) ── */
@@ -356,7 +356,19 @@ export function Navbar({ activeSection = 'Home', showInfoBanner = true, announce
 
           {/* ── Auth CTA ── */}
           <div className="ubsc-auth-section relative" style={{ zIndex: 101 }}>
-            {isLoggedIn ? (
+            {authLoading ? (
+              // Sesi sedang dipulihkan (refresh token) setelah halaman dimuat. Dulu kartu tamu
+              // "Register Now" tampil di jeda ini sehingga pelanggan yang sudah login seolah keluar.
+              <div className="ubsc-cta-wrap hidden origin-right scale-90 min-[1100px]:flex xl:scale-100" aria-hidden>
+                <div className="flex h-[60px] w-[220px] animate-pulse items-stretch rounded-lg bg-white/90 p-1">
+                  <div className="w-14 shrink-0 rounded-md bg-slate-200" />
+                  <div className="flex flex-1 flex-col justify-center gap-1.5 px-3">
+                    <div className="h-2.5 w-24 rounded bg-slate-200" />
+                    <div className="h-2 w-16 rounded bg-slate-200" />
+                  </div>
+                </div>
+              </div>
+            ) : isLoggedIn ? (
               <div className="relative hidden min-[1100px]:block" ref={dropdownRef}>
                 <div className="ubsc-cta-wrap origin-right scale-90 xl:scale-100">
                   <button
@@ -795,7 +807,9 @@ export function Navbar({ activeSection = 'Home', showInfoBanner = true, announce
         <div className="mx-8 mt-0 h-px bg-white/10" />
 
         <div className="px-[clamp(1.25rem,4vw,2rem)] py-[clamp(0.75rem,3vw,1.5rem)]">
-          {isLoggedIn ? (
+          {authLoading ? (
+            <div className="h-[clamp(4rem,13vw,6rem)] w-full animate-pulse rounded-xl bg-white/90" aria-hidden />
+          ) : isLoggedIn ? (
             <div className="flex flex-col gap-2">
               {/* Mobile: profile card */}
               <button
@@ -871,7 +885,7 @@ export function Navbar({ activeSection = 'Home', showInfoBanner = true, announce
       </div>
 
       {/* ── Auth Modal (guest only) ── */}
-      {!isLoggedIn && <AuthModal open={authOpen} initialTab={authInitialTab} onClose={() => setAuthOpen(false)} />}
+      {!authLoading && !isLoggedIn && <AuthModal open={authOpen} initialTab={authInitialTab} onClose={() => setAuthOpen(false)} />}
 
       {/* ── Unfinished payment reminder (customers only) ── */}
       {isLoggedIn && pendingPayment && <PendingPaymentPill payment={pendingPayment} />}
