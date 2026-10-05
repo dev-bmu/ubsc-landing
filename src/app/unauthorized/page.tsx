@@ -8,7 +8,7 @@ import { routes } from '@/config/routes'
 // /unauthorized tapi tidak pernah membuat halamannya — jadi 404, bukan penolakan.
 
 export const metadata: Metadata = {
-  title: 'Akses Ditolak | UBS Port Center',
+  title: 'Akses Ditolak | UB Sport Center',
   description: 'Halaman ini membutuhkan akses yang belum diberikan.',
   robots: {
     index: false,

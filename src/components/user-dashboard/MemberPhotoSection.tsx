@@ -12,7 +12,18 @@ import type { MemberPhotoStatus } from '@/types/contracts/contracts'
  * ulang selalu kembali ke antrean tinjauan (PRD tambahan 2026-09, tahap B). Dipakai modal profil dan
  * halaman checkout membership.
  */
-export function MemberPhotoSection({ url, status, onUploaded }: { url: string | null; status: MemberPhotoStatus | null; onUploaded: () => void }) {
+export function MemberPhotoSection({
+  url,
+  status,
+  onUploaded,
+  compact = false
+}: {
+  url: string | null
+  status: MemberPhotoStatus | null
+  onUploaded: () => void
+  /** Tanpa judul + penjelasan sendiri — pemanggil (langkah checkout) sudah menuliskannya. */
+  compact?: boolean
+}) {
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -72,7 +83,7 @@ export function MemberPhotoSection({ url, status, onUploaded }: { url: string | 
 
   return (
     <div className="space-y-4">
-      <div>
+      <div className={compact ? 'hidden' : undefined}>
         <p className="font-bdo text-[10px] font-medium tracking-[0.18em] text-white/40 uppercase">Foto Member</p>
         <p className="mt-1 font-bdo text-[12px] leading-relaxed text-white/50">
           Foto wajah terbaru, tanpa masker atau kacamata hitam. Petugas mencocokkannya dengan Anda saat masuk gym.

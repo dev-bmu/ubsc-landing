@@ -2,6 +2,7 @@ import { ReservasiButton } from '@/components/landing/ReservasiButton'
 import { ScrollTextReveal } from '@/components/landing/ScrollTextReveal'
 import { SectionDivider } from '@/components/landing/SectionDivider'
 import { FALLBACK_MEMBERSHIP_PLANS, MembershipPlanCarousel } from '@/components/landing/SectionTwo'
+import { routes } from '@/config/routes'
 import type { MembershipPlanDto } from '@/types/contracts/contracts'
 
 const STATS_DATA = [
@@ -43,6 +44,11 @@ interface Props {
  */
 export function PricingInfo({ membershipPlans }: Props) {
   const plans = membershipPlans && membershipPlans.length > 0 ? membershipPlans : FALLBACK_MEMBERSHIP_PLANS
+  // Dulu href='#' (placeholder Laravel) — tombolnya tidak ke mana-mana. Checkout menampilkan semua paket.
+  // FALLBACK_MEMBERSHIP_PLANS datang dari modul 'use client' — di server component isinya referensi klien,
+  // bukan array, jadi tidak boleh dibaca di sini.
+  const firstPlan = membershipPlans?.[0]
+  const signupHref = firstPlan ? routes.membershipCheckout(firstPlan.id) : routes.pricing()
 
   return (
     <section className="overflow-x-clip bg-white" id="pricing-info">
@@ -67,8 +73,7 @@ export function PricingInfo({ membershipPlans }: Props) {
           <div className="mx-auto my-6 w-full max-w-[380px]">
             <MembershipPlanCarousel plans={plans} />
           </div>
-          {/* eslint-disable-next-line no-restricted-syntax -- '#' adalah placeholder anchor milik sumber Laravel, bukan URL halaman; mengganti dengan routes.* akan mengubah tujuan tautan */}
-          <ReservasiButton label="Daftar Sekarang" href="#" />
+          <ReservasiButton label="Daftar Sekarang" href={signupHref} />
           <div className="mt-2 flex flex-col">
             <span className="mb-2 font-bdo text-[clamp(0.75rem,0.8vw,0.875rem)] font-medium text-black/40">(=Results)</span>
             {STATS_DATA.map((stat, index) => (
@@ -134,8 +139,7 @@ export function PricingInfo({ membershipPlans }: Props) {
             </div>
 
             <div className="mt-auto w-full self-start pb-6">
-              {/* eslint-disable-next-line no-restricted-syntax -- '#' adalah placeholder anchor milik sumber Laravel, bukan URL halaman; mengganti dengan routes.* akan mengubah tujuan tautan */}
-              <ReservasiButton label="Daftar Sekarang" href="#" />
+              <ReservasiButton label="Daftar Sekarang" href={signupHref} />
             </div>
           </div>
         </div>

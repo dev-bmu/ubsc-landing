@@ -18,14 +18,8 @@ runContractCheck()
 // pernah dipakai (font-sans Laravel = BDO Grotesk), jadi hanya menambah satu request lintas domain.
 
 export const metadata: Metadata = {
-  title: 'UBS Port Center',
+  title: 'UB Sport Center',
   description: 'Pusat olahraga Universitas Brawijaya — booking lapangan, kelas, dan keanggotaan.',
-  icons: {
-    // TODO Fase 9: ganti dengan favicon UBSC hasil diet aset.
-    icon: '/img/favicon.svg',
-    shortcut: '/img/favicon.svg',
-    apple: '/img/favicon.svg'
-  },
   robots: {
     // Situs publik: boleh diindeks. TODO Fase 5: src/app/robots.ts masih warisan
     // boilerplate (Disallow: /) dan harus diperbaiki bersama sitemap.

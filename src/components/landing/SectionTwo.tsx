@@ -87,6 +87,13 @@ function formatPrice(amount: number) {
   return new Intl.NumberFormat('id-ID').format(amount)
 }
 
+/** Judul kartu: "Paket Bulanan", "Paket 6 Bulan", "Paket Tahunan". */
+function planPeriod(months: number) {
+  if (months === 12) return 'Paket Tahunan'
+  if (months === 1) return 'Paket Bulanan'
+  return `Paket ${months} Bulan`
+}
+
 function durationSuffix(months: number) {
   if (months === 12) return 'Tahun'
   if (months === 1) return 'Bulan'
@@ -386,8 +393,10 @@ function MembershipPlanCard({ plan }: { plan: MembershipPlanDto }) {
   const image = plan.cardImageUrl || '/assets/images/poster-gym-konten-program-ub-sport-center.avif'
   const features = planFeatures(plan)
   const badge = plan.publicBadge || 'Membership Plan'
-  const savings = plan.savingsLabel || 'Paket Aktif'
-  const cta = plan.ctaLabel || 'Membership'
+  // Tanpa label hemat dari CMS, badge disembunyikan — dulu jatuh ke 'Paket Aktif' yang dikira status
+  // membership pengunjung sendiri (catatan client 2026-10-05).
+  const savings = plan.savingsLabel
+  const cta = plan.ctaLabel || 'Daftar Sekarang'
   const formattedPrice = formatPrice(plan.price)
   const priceScale = Math.max(0.72, Math.min(1, 7 / Math.max(formattedPrice.length, 7)))
 
@@ -412,7 +421,7 @@ function MembershipPlanCard({ plan }: { plan: MembershipPlanDto }) {
                 delay={80}
                 className="font-bdo text-[16px] leading-[1.04] font-medium tracking-[-0.045em] sm:text-[20px] md:text-[22px] xl:text-[18px] xl:whitespace-nowrap"
               >
-                Best monthly Plan for
+                {planPeriod(plan.durationMonths)}
               </ScrollTextReveal>
               <ScrollTextReveal
                 as="h3"
@@ -427,9 +436,9 @@ function MembershipPlanCard({ plan }: { plan: MembershipPlanDto }) {
             </span>
           </div>
 
-          <div className="mt-7 flex flex-col gap-5 sm:mt-9 sm:flex-row sm:items-end sm:justify-between xl:mt-12 xl:gap-3">
+          <div className="mt-7 flex flex-col gap-5 sm:mt-9 xl:mt-10 xl:gap-4">
             <div className="min-w-0 flex-1">
-              <div className="flex max-w-full flex-nowrap items-end gap-1 overflow-visible whitespace-nowrap">
+              <div className="flex max-w-full flex-wrap items-end gap-x-1">
                 <ScrollTextReveal delay={260} className="pb-1 font-bdo text-[12px] font-semibold sm:text-[13px] xl:text-[11px]">
                   Rp
                 </ScrollTextReveal>
@@ -451,15 +460,17 @@ function MembershipPlanCard({ plan }: { plan: MembershipPlanDto }) {
               {plan.wargaPrice !== null && (
                 <p className="mt-2 font-bdo text-[11px] font-medium text-[#15678D] xl:text-[10px]">Warga UB Rp {formatPrice(plan.wargaPrice)}</p>
               )}
-              <span className="mt-4 inline-flex rounded-full bg-[#D8FFD5] px-4 py-1.5 font-bdo text-[11px] font-light text-[#15803D] sm:mt-5 sm:px-5 sm:py-2 sm:text-xs xl:mt-4 xl:px-4 xl:py-1.5 xl:text-[10px]">
-                <ScrollTextReveal delay={410}>{savings}</ScrollTextReveal>
-              </span>
+              {savings && (
+                <span className="mt-4 inline-flex rounded-full bg-[#D8FFD5] px-4 py-1.5 font-bdo text-[11px] font-light text-[#15803D] sm:mt-5 sm:px-5 sm:py-2 sm:text-xs xl:mt-4 xl:px-4 xl:py-1.5 xl:text-[10px]">
+                  <ScrollTextReveal delay={410}>{savings}</ScrollTextReveal>
+                </span>
+              )}
             </div>
 
             <a
               // Paket cadangan (API mati) tidak bisa dibeli — tetap ke /pricing seperti semula.
               href={plan.id === FALLBACK_MEMBERSHIP_PLANS[0].id ? routes.pricing() : routes.membershipCheckout(plan.id)}
-              className="inline-flex h-11 w-full shrink-0 items-center justify-center rounded-[12px] bg-black px-6 font-bdo text-sm font-light text-white shadow-[0_14px_26px_rgba(0,0,0,0.28)] transition hover:-translate-y-0.5 hover:bg-[#FF0000] sm:w-auto sm:px-8 xl:h-9 xl:rounded-[11px] xl:px-6 xl:text-[11px]"
+              className="inline-flex h-11 w-full shrink-0 items-center justify-center rounded-[12px] bg-black px-6 font-bdo text-sm font-medium text-white shadow-[0_14px_26px_rgba(0,0,0,0.28)] transition hover:-translate-y-0.5 hover:bg-[#FF0000] xl:h-10 xl:rounded-[11px] xl:text-[12px]"
             >
               <ScrollTextReveal delay={470}>{cta}</ScrollTextReveal>
             </a>
