@@ -3,6 +3,7 @@
 import { CarouselNavButtons } from '@/components/landing/CarouselNavButtons'
 import { ReelCard } from '@/components/landing/ReelCard'
 import { AnimatedBookingLink } from '@/components/news/AnimatedBookingLink'
+import { mediaUrl } from '@/config/media'
 import { useEmblaNav } from '@/hooks/useEmblaNav'
 import type { ReelDto } from '@/types/contracts/contracts'
 import useEmblaCarousel from 'embla-carousel-react'
@@ -14,7 +15,7 @@ const DUMMY_REELS: ReelDto[] = [
     title: 'SPORT CENTER UB.',
     isActive: true,
     thumbnail: '/assets/reels/thumbnail-1.avif',
-    videoUrl: '/assets/reels/reels-ubsc-1.mp4'
+    videoUrl: mediaUrl('reels/reels-ubsc-1.mp4')
   },
   {
     id: '2',
@@ -22,7 +23,7 @@ const DUMMY_REELS: ReelDto[] = [
     title: 'SPORT CENTER UB.',
     isActive: true,
     thumbnail: '/assets/reels/thumbnail-2.avif',
-    videoUrl: '/assets/reels/reels-ubsc-2.mp4'
+    videoUrl: mediaUrl('reels/reels-ubsc-2.mp4')
   },
   {
     id: '3',
@@ -30,7 +31,7 @@ const DUMMY_REELS: ReelDto[] = [
     title: 'SPORT CENTER UB.',
     isActive: true,
     thumbnail: '/assets/reels/thumbnail-3.avif',
-    videoUrl: '/assets/reels/reels-ubsc-3.mp4'
+    videoUrl: mediaUrl('reels/reels-ubsc-3.mp4')
   },
   {
     id: '4',
@@ -38,7 +39,7 @@ const DUMMY_REELS: ReelDto[] = [
     title: 'SPORT CENTER UB.',
     isActive: true,
     thumbnail: '/assets/reels/thumbnail-4.avif',
-    videoUrl: '/assets/reels/reels-ubsc-4.mp4'
+    videoUrl: mediaUrl('reels/reels-ubsc-4.mp4')
   },
   {
     id: '5',
@@ -46,7 +47,7 @@ const DUMMY_REELS: ReelDto[] = [
     title: 'SPORT CENTER UB.',
     isActive: true,
     thumbnail: '/assets/reels/thumbnail-5.avif',
-    videoUrl: '/assets/reels/reels-ubsc-5.mp4'
+    videoUrl: mediaUrl('reels/reels-ubsc-5.mp4')
   }
 ]
 

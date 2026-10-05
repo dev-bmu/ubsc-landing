@@ -1,9 +1,9 @@
 import type { NextConfig } from 'next'
 
 // ===== Basis URL ubsc-api =====
-// Di dev, Next yang mem-proxy /api dan /uploads lewat rewrites() supaya browser selalu bicara same-origin —
-// itu syarat cookie httpOnly bekerja tanpa CORS dan tanpa subdomain api.
-// Di produksi kedua path ini diterminasi nginx, bukan diteruskan Next, jadi rewrites() hanya jalur dev.
+// Next mem-proxy /api dan /uploads lewat rewrites() supaya browser selalu bicara same-origin — itu syarat
+// cookie httpOnly bekerja tanpa CORS dan tanpa subdomain api. Berlaku di dev dan produksi (nginx hanya
+// meneruskan domain ke Next).
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4020'
 
 const apiUrl = new URL(API_BASE_URL)
@@ -61,17 +61,17 @@ const nextConfig: NextConfig = {
         source: '/uploads/:path*',
         destination: `${API_BASE_URL}/uploads/:path*`
       },
-      // Video reel TIDAK ikut git (R9): berkasnya tinggal di direktori media bersama dan dipindahkan
-      // dengan ubsc-api/ops/scripts/sync-media.sh. Komponen tetap menulis src="/assets/reels/..." persis
-      // seperti Laravel — jalur inilah yang membuat path itu tetap menemukan berkasnya.
+      // Video TIDAK ikut git (R9): berkasnya tinggal di direktori media bersama dan dipindahkan dengan
+      // ubsc-api/ops/scripts/sync-media.sh. Komponen memakai mediaUrl() (src/config/media.ts): di produksi
+      // langsung ke CDN (NEXT_PUBLIC_MEDIA_URL), di dev '/assets/reels/...' yang ditangkap rewrite ini.
       //
       // Array rewrites polos berjalan SETELAH filesystem (afterFiles). Itu yang membuat prefiks ini boleh
       // dipakai bersama: thumbnail .avif ada di public/assets/reels/ dan dilayani Next lebih dulu, hanya
       // .mp4 yang tidak ada di sana dan jatuh ke rewrite. Jangan pindahkan ke beforeFiles — thumbnail akan
       // ikut diproksikan dan hilang.
       //
-      // Seperti dua rewrite di atas, ini jalur DEV: di produksi nginx menerminasi /assets/reels sendiri
-      // dari /srv/ubsc/media dan permintaan tidak pernah sampai ke Next.
+      // /api dan /uploads dipakai di dev DAN produksi: nginx hanya meneruskan domain ke Next
+      // (ubsc-api/docs/fase-10.md §4). Tujuannya dibekukan saat build dari API_BASE_URL.
       {
         source: '/assets/reels/:path*',
         destination: `${API_BASE_URL}/media/reels/:path*`

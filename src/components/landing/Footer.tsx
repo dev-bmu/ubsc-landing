@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useNearViewport } from '@/hooks/useNearViewport'
+import { mediaUrl } from '@/config/media'
 import { routes } from '@/config/routes'
 import ig from '@/assets/icons/ig.svg'
 import x from '@/assets/icons/x.svg'
@@ -275,7 +276,7 @@ function FooterVideo() {
 
   return (
     <video ref={ref} loop muted playsInline preload="none" className="h-full w-full object-cover object-center select-none">
-      {near && <source src="/assets/reels/Footer.mp4" type="video/mp4" />}
+      {near && <source src={mediaUrl('reels/Footer.mp4')} type="video/mp4" />}
     </video>
   )
 }

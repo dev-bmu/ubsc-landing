@@ -1,6 +1,6 @@
 // ===== Path API ubsc-api =====
-// axiosInstance memakai baseURL '/api' (same-origin; di dev di-rewrite ke ubsc-api oleh
-// next.config.ts, di produksi diterminasi nginx), jadi SELURUH path di file ini relatif
+// axiosInstance memakai baseURL '/api' (same-origin; di-rewrite ke ubsc-api oleh next.config.ts,
+// di dev maupun produksi), jadi SELURUH path di file ini relatif
 // terhadap '/api'.
 
 // ===== Audience auth =====

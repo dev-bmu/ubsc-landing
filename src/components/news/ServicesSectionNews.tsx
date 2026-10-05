@@ -6,6 +6,7 @@ import person from '@/assets/images/person.avif'
 import { CurvedLoop } from '@/components/landing/CurvedLoop'
 import { NewsCard, type NewsItem } from '@/components/landing/NewsCard'
 import { SectionDivider } from '@/components/landing/SectionDivider'
+import { mediaUrl } from '@/config/media'
 import { ArrowRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -76,7 +77,7 @@ export function ServicesSectionNews({ news }: { news?: DummyNewsItem[] }) {
         Dalam Pengembangan: Fitur artikel dan berita akan Segera Hadir
       </p>
       <div className="mt-4 flex-1 overflow-hidden rounded-sm bg-black/40">
-        <video src="/assets/reels/tennis-vid.mp4" className="h-full w-full object-cover" autoPlay loop muted playsInline />
+        <video src={mediaUrl('reels/tennis-vid.mp4')} className="h-full w-full object-cover" autoPlay loop muted playsInline />
       </div>
     </div>
   )

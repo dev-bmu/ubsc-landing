@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { mediaUrl } from '@/config/media'
 
 interface HeroBottomBarProps {
   sectionNumber?: string
@@ -64,8 +65,8 @@ function HeroCtaArrow({ className = '' }: { className?: string }) {
  * `.hero-bottom-scroll:hover .hero-bottom-scroll-label` (border rgba(255,255,255,.95)); tanpa `!`
  * bespoke menang dan selama transisi 300ms warnanya beda. `!` mengembalikan urutan menang v3.
  *
- * Video /assets/reels/hero.mp4 dilayani lewat rewrite next.config (/assets/reels/* -> API /media),
- * karena berkas video sengaja di luar git (R9). `preload="none"` dipertahankan.
+ * Video hero.mp4 sengaja di luar git (R9): mediaUrl() -> CDN di produksi, rewrite /assets/reels/* ->
+ * API /media di dev. `preload="none"` dipertahankan.
  */
 export function HeroBottomBar({
   sectionNumber = '01/',
@@ -159,7 +160,7 @@ export function HeroBottomBar({
       {variant === 'solid' && showVideo && (
         <video
           className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-          src="/assets/reels/hero.mp4"
+          src={mediaUrl('reels/hero.mp4')}
           autoPlay
           loop
           muted
