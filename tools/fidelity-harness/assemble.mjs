@@ -43,12 +43,23 @@ ${paletteLines.join('\n')}
 // v3 drop-shadow-sm -> v4 drop-shadow-xs, v3 drop-shadow -> v4 drop-shadow-sm, dst.
 const COMPAT_THEME = `
 /* ============================================================================
-   KOMPAT DEFAULT v3 — ring & drop-shadow
+   KOMPAT DEFAULT v3 — breakpoint, ring & drop-shadow
    ----------------------------------------------------------------------------
+   breakpoint: v3 = px, v4 = rem. Dua akibat terukur: (1) varian arbitrer ber-px
+     (min-[1440px], min-[1800px]) tidak lagi diurutkan setelah xl/2xl karena unitnya
+     berbeda, sehingga xl: yang menang (terukur di SectionTwo/Four/Seven 1440px dan
+     FacilityListSection 1800px); (2) pengunjung yang memperbesar font default browser
+     melihat layout breakpoint yang berbeda dari Laravel.
    ring  : v3 = 3px biru-500 opasitas 0.5. v4 = currentColor (hitam pada teks hitam).
    drop-shadow: v4 mengganti nilai skalanya; v3 sm/md/lg/xl berupa DUA lapisan.
    ============================================================================ */
 @theme {
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
   --default-ring-width: 3px;
   --default-ring-color: rgb(59 130 246 / 0.5);
 
@@ -144,12 +155,18 @@ const PREFLIGHT_COMPAT = `
     padding: 1px;
   }
 
-  /* v3 tidak me-reset tombol di dalam input file; v4 memasukkannya ke reset universal
-     (terukur: input file 30px -> 24px). */
+  /* v3 hanya memberi tombol input file appearance + font inherit; v4 memasukkannya ke reset universal
+     DAN reset form (warna, latar, radius, letter-spacing). Terukur: input file 30px -> 24px, tombol
+     kehilangan latar abu-abu UA. Semua input file UBSC ber-class hidden, jadi ini murni paritas semantik. */
   ::file-selector-button {
     margin: revert;
     padding: revert;
     border: revert;
+    border-radius: revert;
+    background-color: revert;
+    color: revert;
+    letter-spacing: revert;
+    opacity: revert;
   }
 
   /* v3 preflight: [type=search] appearance textfield (menang atas forms plugin yang
@@ -174,6 +191,14 @@ const PREFLIGHT_COMPAT = `
 
   dialog {
     margin: revert;
+  }
+
+  /* Prefiks yang di Laravel dipasang autoprefixer pada output @tailwindcss/forms. Tanpa optimize (lihat
+     postcss.config.mjs repo Next) Tailwind v4 tidak memasang prefiks, dan Safari masih membutuhkan
+     -webkit-user-select. Chromium memperlakukannya sebagai alias bernilai sama — harness tidak berubah. */
+  input:where([type='checkbox']),
+  input:where([type='radio']) {
+    -webkit-user-select: none;
   }
 }
 `
@@ -200,6 +225,15 @@ root.walkRules((rule) => {
   )
 })
 
+// 5b2. Blok kompat warna border yang dipasang codemod menyasar `*, ::after, ::before, ::backdrop,
+//      ::file-selector-button`. Preflight v3 hanya menyasar `*, ::before, ::after` — tombol input file dan
+//      ::backdrop di Laravel memakai warna border UA (terukur: border tombol file hitam -> gray-200).
+root.walkRules((rule) => {
+  if (!rule.selectors.includes('::file-selector-button')) return
+  if (!rule.nodes.some((n) => n.type === 'decl' && n.prop === 'border-color' && /--color-gray-200/.test(n.value))) return
+  rule.selectors = rule.selectors.filter((s) => s !== '::backdrop' && s !== '::file-selector-button')
+})
+
 // 5c. CSS bespoke = semua node tingkat atas SETELAH @layer base terakhir.
 const topNodes = root.nodes
 const lastBaseIdx = topNodes.map((n, i) => (n.type === 'atrule' && n.name === 'layer' && n.params === 'base' ? i : -1)).filter((i) => i >= 0).pop()
@@ -212,6 +246,17 @@ root.append(postcss.comment({ text: 'TYPOGRAPHY — variabel warna prose bernila
 root.append(postcss.parse(proseVars.replace(/^ {2}/gm, '')))
 
 const bespoke = root.nodes.slice(lastBaseIdx + 1)
+
+// 5c2. Prefiks autoprefixer yang masih dibutuhkan target Tailwind v4 (Safari 16.4+). Build Laravel menjalankan
+//      autoprefixer atas CSS bespoke; di repo Next tidak ada lagi (optimize Lightning CSS dimatikan karena presisi
+//      angka). Dari seluruh selisih prefiks oracle vs kandidat, hanya user-select yang masih bermakna: Safari tidak
+//      mengenal user-select tanpa prefiks. Chromium memperlakukan -webkit-user-select sebagai alias bernilai sama.
+for (const n of bespoke) {
+  n.walkDecls?.('user-select', (decl) => {
+    if (!decl.parent.some((d) => d.type === 'decl' && d.prop === '-webkit-user-select')) decl.cloneBefore({ prop: '-webkit-user-select' })
+  })
+}
+
 if (bespokeLayer === 'utilities') {
   const wrapper = postcss.atRule({ name: 'layer', params: 'utilities' })
   for (const n of bespoke) wrapper.append(n.clone())
@@ -227,7 +272,14 @@ if (bespokeLayer === 'utilities') {
 // 5d. Sisipkan blok tambahan tepat setelah @custom-variant (sebelum @theme codemod).
 let css = root.toString()
 const anchor = css.indexOf('@theme {')
-css = css.slice(0, anchor) + PALETTE + COMPAT_THEME + css.slice(anchor)
+
+// Varian hover v3: `:hover` apa adanya. v4 membungkus hover: dalam @media (hover: hover), sehingga di perangkat
+// sentuh gaya hover yang "menempel" setelah tap — perilaku yang dilihat pengunjung mobile Laravel — hilang.
+const HOVER_VARIANT = `
+/* Varian hover v3: tanpa @media (hover: hover). Lihat catatan 5d di assemble.mjs. */
+@custom-variant hover (&:hover);
+`
+css = css.slice(0, anchor) + HOVER_VARIANT + PALETTE + COMPAT_THEME + css.slice(anchor)
 css = css.replace(/(\n@layer base \{)/, `\n${PREFLIGHT_COMPAT}\n$1`)
 css += `\n${GRADIENT}\n${LINE_HEIGHT}\n${DROP_SHADOW}`
 
@@ -235,3 +287,95 @@ if (harnessSource) css = css.replace("@import 'tailwindcss';", `@import 'tailwin
 
 fs.writeFileSync(outPath, css)
 console.log(`kandidat ditulis: ${outPath} (${css.split('\n').length} baris, bespoke-layer=${bespokeLayer})`)
+
+// ===== 6. Berkas final untuk repo Next (--emit-dir) =====
+// Kandidat monolitik di atas adalah yang diukur harness. Repo Next memakai isi yang SAMA, dipecah supaya
+// ubsc-admin bisa memakai fondasi tanpa CSS bespoke landing:
+//
+//   tailwind-v3-compat.css     plugin, varian, palet & default v3, kompat preflight          (landing + admin)
+//   ubsc-base.css              @theme brand hasil codemod, @font-face, @layer base Laravel     (landing + admin)
+//   ubsc-bespoke.css           CSS bespoke landing, di-import dengan layer(utilities)           (landing saja)
+//   tailwind-v3-utilities.css  variabel prose v3, @utility gradien/text/drop-shadow v3          (landing + admin)
+//
+// Urutan import di entry mereproduksi urutan kandidat. Satu-satunya node yang berpindah posisi adalah @theme
+// brand (dari sebelum kompat preflight ke sesudahnya) — @theme tidak mengeluarkan CSS di posisinya, dan tidak
+// ada variabel yang didefinisikan dua kali, sehingga keluaran kompilasi identik (diverifikasi pipeline.sh).
+const emitDir = opt['emit-dir']
+if (emitDir) {
+  const parsed = postcss.parse(css)
+  const header = []
+  const brandTheme = []
+  const preflightLayers = []
+  const baseNodes = []
+  const tail = []
+  let bespokeWrapper = null
+  let seenLaravelBase = false
+  let pendingComments = []
+  const take = (arr, node) => {
+    arr.push(...pendingComments, node)
+    pendingComments = []
+  }
+  for (const node of parsed.nodes) {
+    if (node.type === 'comment') {
+      pendingComments.push(node)
+      continue
+    }
+    if (node.type === 'atrule' && (node.name === 'import' || node.name === 'source')) {
+      pendingComments = []
+      continue
+    }
+    if (node.type === 'atrule' && (node.name === 'plugin' || node.name === 'custom-variant')) take(header, node)
+    else if (node.type === 'atrule' && node.name === 'theme') {
+      // Palet v3, default ring/drop-shadow, dan line-height v3 dikenali dari variabelnya; sisanya @theme brand.
+      const body = node.toString()
+      if (/--color-slate-50:|--default-ring-width|--drop-shadow-xs/.test(body)) take(header, node)
+      else if (/--text-xs--line-height/.test(body)) take(tail, node)
+      else take(brandTheme, node)
+    } else if (node.type === 'atrule' && node.name === 'layer' && node.params === 'base') {
+      if (/html,\s*body/.test(node.toString())) {
+        take(baseNodes, node)
+        seenLaravelBase = true
+      } else take(preflightLayers, node)
+    } else if (node.type === 'atrule' && node.name === 'font-face') take(baseNodes, node)
+    else if (node.type === 'atrule' && node.name === 'layer' && node.params === 'utilities' && seenLaravelBase && !bespokeWrapper) {
+      pendingComments = []
+      bespokeWrapper = node
+    } else if (node.type === 'atrule' && node.name === 'utility') take(tail, node)
+    else throw new Error(`node tingkat atas tidak dikenali saat memecah kandidat: ${node.toString().slice(0, 120)}`)
+  }
+  if (!bespokeWrapper) throw new Error('blok bespoke @layer utilities tidak ditemukan')
+
+  // Variabel prose (akhir blok bespoke) dipisah ke berkas utilitas kompat; sisanya = bespoke murni.
+  const bespokeChildren = bespokeWrapper.nodes.map((n) => n.clone())
+  const proseStart = bespokeChildren.findIndex((n) => n.type === 'comment' && /TYPOGRAPHY — variabel warna prose/.test(n.text))
+  if (proseStart < 0) throw new Error('penanda variabel prose tidak ditemukan')
+  const bespokeOnly = bespokeChildren.slice(0, proseStart)
+  const proseNodes = bespokeChildren.slice(proseStart)
+
+  const banner = (title, lines) => `/* ============================================================================\n   ${title}\n   ----------------------------------------------------------------------------\n${lines.map((l) => `   ${l}`).join('\n')}\n   DIHASILKAN tools/fidelity-harness/assemble.mjs --emit-dir. Jangan disunting tangan: ubah assemble.mjs\n   atau sumbernya, jalankan ulang pipeline, dan pastikan gate harness tetap bersih.\n   ============================================================================ */\n`
+  // Dirender lewat root baru: at-rule tanpa blok (@plugin, @custom-variant) hanya mendapat titik koma penutup
+  // bila ditulis sebagai anak sebuah root — toString() per node menghasilkan "@plugin 'a'\n@plugin 'b'" yang
+  // dibaca parser sebagai SATU at-rule.
+  const render = (nodes) => {
+    const out = postcss.root()
+    for (const n of nodes) {
+      const clone = n.clone()
+      clone.raws.before = '\n\n'
+      out.append(clone)
+    }
+    out.raws.semicolon = true
+    return out.toString().replace(/^\n+/, '')
+  }
+  const proseLayer = postcss.atRule({ name: 'layer', params: 'utilities' })
+  for (const n of proseNodes) proseLayer.append(n)
+
+  const files = {
+    'tailwind-v3-compat.css': banner('KOMPAT TAILWIND v3 — plugin, varian, palet & default v3, preflight', ['Membuat Tailwind v4 merender identik dengan CSS produksi Laravel (Tailwind v3.4).', 'Setiap blok berisi alasan terukurnya sendiri.']) + '\n' + render([...header, ...preflightLayers]) + '\n',
+    'ubsc-base.css': banner('FONDASI UBSC — token brand, @font-face, base Laravel', ['@theme hasil konversi tailwind.config.js Laravel, font @font-face mentah (BUKAN next/font —', 'Rewrite.md), dan @layer base dari resources/css/app.css.']) + '\n' + render([...brandTheme, ...baseNodes]) + '\n',
+    'ubsc-bespoke.css': banner('CSS BESPOKE LANDING — dari resources/css/app.css Laravel', ['Di-import globals.css dengan layer(utilities): di v3 CSS ini ditulis SETELAH utilitas,', 'jadi saat spesifisitas seri bespoke yang menang. Kasus seri dengan VARIAN dikoreksi di markup (R3).']) + '\n' + render(bespokeOnly) + '\n',
+    'tailwind-v3-utilities.css': banner('KOMPAT TAILWIND v3 — utilitas', ['Variabel warna prose v3, gradien sRGB, line-height skala font v3, drop-shadow dua lapis.']) + '\n' + render([proseLayer, ...tail]) + '\n'
+  }
+  fs.mkdirSync(emitDir, { recursive: true })
+  for (const [name, content] of Object.entries(files)) fs.writeFileSync(`${emitDir}/${name}`, content)
+  console.log(`berkas final ditulis ke ${emitDir}: ${Object.keys(files).join(', ')}`)
+}

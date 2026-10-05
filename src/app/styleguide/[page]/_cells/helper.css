@@ -1,0 +1,5 @@
+
+*,*::before,*::after{animation-play-state:paused!important;animation-delay:-0.7s!important;transition:none!important;caret-color:transparent!important}
+.sg-grid{display:flex;flex-wrap:wrap;gap:0;padding:0;margin:0;background:#ffffff}
+.sg-cell{position:relative;width:128px;height:84px;overflow:hidden;contain:strict;box-sizing:border-box;padding:6px;margin:0;background:#ffffff;flex:none}
+.sg-cell.sg-wide{width:256px;height:168px}

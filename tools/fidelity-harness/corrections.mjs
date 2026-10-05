@@ -6,6 +6,7 @@
 //   R1  class MATI di v3 (tidak ada di CSS produksi Laravel) tapi HIDUP di v4 -> hapus
 //   R2  varian X:text-{ukuran} setelah leading-* -> tambah X:leading-* sesuai hasil v3
 //   R3  koreksi manual per string (terdokumentasi satu per satu, lihat MANUAL)
+//   R4  divide-* -> varian anak arbitrer dengan selector v3 (garis di sisi awal anak, kecuali anak pertama)
 //
 // Pemakaian: node corrections.mjs <scratch resources/js> <laravel resources/js> <oracle.css> <kandidat.out.css>
 //            <class-map.json> <inventory.json> <v3ref dir> <laporan.json> [--apply]
@@ -17,9 +18,11 @@ import { DEAD_FILES, literalsOf, isClassString } from './corpus.mjs'
 const [, , v4Dir, v3Dir, oraclePath, candidatePath, classMapPath, inventoryPath, v3refDir, reportPath, applyFlag] = process.argv
 const APPLY = applyFlag === '--apply'
 
+// Nama class dari CSS, termasuk escape heksadesimal (`\2c ` untuk koma) yang ditulis sebagian minifier.
+const unescapeCss = (s) => s.replace(/\\([0-9a-fA-F]{1,6})\s?|\\(.)/g, (_, hex, ch) => (hex ? String.fromCodePoint(parseInt(hex, 16)) : ch))
 const classesIn = (css) => {
   const set = new Set()
-  for (const m of css.matchAll(/\.((?:\\.|[\w-])+)/g)) set.add(m[1].replace(/\\(.)/g, '$1'))
+  for (const m of css.matchAll(/\.((?:\\[0-9a-fA-F]{1,6}\s?|\\.|[\w-])+)/g)) set.add(unescapeCss(m[1]))
   return set
 }
 const v3set = classesIn(fs.readFileSync(oraclePath, 'utf8'))
@@ -109,6 +112,7 @@ function correctR2(tokens) {
 }
 
 // ===== R3: koreksi manual — setiap entri wajib punya alasan terukur =====
+// `when` (opsional): koreksi hanya berlaku pada string yang memuat token itu.
 const MANUAL = [
   {
     // Terukur di harness (1280px): v3 border-bottom-right-radius 0px, v4 24px. Dua utilitas di varian sm yang
@@ -117,11 +121,72 @@ const MANUAL = [
     match: 'sm:rounded-b-[24px] sm:rounded-r-none',
     replace: 'sm:rounded-bl-[24px] sm:rounded-r-none',
     why: 'urutan intra-varian: v3 rounded-r-none menang di sudut kanan-bawah'
+  },
+  {
+    // Terukur (768/1280px) dan cascade-ties.mjs: sebelum animasi masuk, v3 menampilkan gambar 0.8 (md) / 1 (xl)
+    // karena varian responsif ditulis SETELAH `.ah-panel-img { opacity: 0 }`; kandidat v4 menaruh bespoke setelah
+    // semua utilitas, jadi gambarnya 0. `[&.ah-panel-img]` menaikkan spesifisitas varian ke 0,2,0: menang atas
+    // `.ah-panel-img` (0,1,0) tetapi tetap kalah — seperti di v3 — dari `.ah-hero--enter .ah-panel-img` (0,2,0,
+    // ditulis setelahnya) begitu hero masuk, dan dari blok reduced-motion ber-!important.
+    when: 'ah-panel-img',
+    match: 'md:opacity-80',
+    replace: 'md:[&.ah-panel-img]:opacity-80',
+    why: 'seri spesifisitas bespoke vs varian: v3 varian menang (ditulis setelah bespoke)'
+  },
+  {
+    when: 'ah-panel-img',
+    match: 'xl:opacity-100',
+    replace: 'xl:[&.ah-panel-img]:opacity-100',
+    why: 'seri spesifisitas bespoke vs varian: v3 varian menang (ditulis setelah bespoke)'
+  },
+  {
+    // cascade-ties.mjs (walker tidak memicu :hover): `.hero-bottom-scroll:hover .hero-bottom-scroll-label` (0,3,0)
+    // menulis border rgba(255,255,255,.95); di v3 `.group:hover .group-hover\:border-white` juga (0,3,0) dan ditulis
+    // SETELAHNYA, jadi border putih penuh. Di v4 group-hover hanya (0,2,0) — `:where(.group)` — dan bespoke di akhir
+    // layer utilities, jadi .95 yang menang. Setelah transisi latar putih keduanya tampak sama, tetapi selama 300ms
+    // transition-colors tidak. `!` membuat utilitas menang atas deklarasi bespoke biasa; tidak ada aturan lain yang
+    // menulis border-color label ini.
+    when: 'hero-bottom-scroll-label',
+    match: 'group-hover:border-white',
+    replace: 'group-hover:border-white!',
+    why: 'seri spesifisitas bespoke vs group-hover: v3 varian menang (ditulis setelah bespoke), v4 group-hover lebih lemah'
   }
 ]
 
+// ===== R4: divide-* v3 =====
+// v3: `.divide-y > :not([hidden]) ~ :not([hidden])` — garis di SISI AWAL setiap anak kecuali yang pertama.
+// v4: `:where(.divide-y > :not(:last-child))` — garis di SISI AKHIR setiap anak kecuali yang terakhir.
+// Posisi garis sama bila tanpa gap, tetapi isi anak bergeser 1px (terukur di grid Facilities & News Form), dan
+// dengan gap garisnya pindah sejauh gap. Varian anak arbitrer menulis ulang selector v3 persis, dengan
+// spesifisitas yang sama (0,3,0).
+const DIVIDE_CHILDREN = '[&>:not([hidden])~:not([hidden])]'
+const DIVIDE_STYLES = new Set(['solid', 'dashed', 'dotted', 'double', 'none'])
+function correctR4(tokens) {
+  const added = []
+  const out = tokens.map((tok) => {
+    const parts = tok.split(':')
+    const util = parts.pop()
+    const prefix = parts.length ? `${parts.join(':')}:` : ''
+    const m = util.match(/^divide-(.+)$/)
+    if (!m) return tok
+    const rest = m[1]
+    let border
+    if (rest === 'x') border = 'border-l'
+    else if (rest === 'y') border = 'border-t'
+    else if (/^x-\d+$/.test(rest)) border = `border-l-${rest.slice(2)}`
+    else if (/^y-\d+$/.test(rest)) border = `border-t-${rest.slice(2)}`
+    else if (/^(x|y)-reverse$/.test(rest)) return tok // tidak dipakai UBSC; biarkan dan laporkan
+    else if (DIVIDE_STYLES.has(rest)) border = `border-${rest}`
+    else border = `border-${rest}` // warna, termasuk arbitrer dan modifier opasitas
+    const next = `${prefix}${DIVIDE_CHILDREN}:${border}`
+    added.push([tok, next])
+    return next
+  })
+  return { tokens: out, changed: added }
+}
+
 // ===== Terapkan per berkas =====
-const report = { R0: [], R1: [], R2: [], R2skipped: [], R3: [] }
+const report = { R0: [], R1: [], R2: [], R2skipped: [], R3: [], R4: [] }
 const files = []
 const walk = (d) => {
   for (const f of fs.readdirSync(d, { withFileTypes: true })) {
@@ -171,9 +236,14 @@ for (const rel of files) {
     if (r2.skipped) report.R2skipped.push({ file: rel, string: before, why: r2.skipped })
     else if (r2.added.length) report.R2.push({ file: rel, string: before, added: r2.added })
     t4 = r2.tokens ?? t4
+    // R4 — divide-* dengan selector v3
+    const r4 = correctR4(t4)
+    if (r4.changed.length) report.R4.push({ file: rel, string: before, changed: r4.changed })
+    t4 = r4.tokens
     // R3 — manual
     let after = t4.join(' ')
     for (const m of MANUAL) {
+      if (m.when && !t4.includes(m.when)) continue
       if (after.includes(m.match)) {
         after = after.replace(m.match, m.replace)
         report.R3.push({ file: rel, match: m.match, replace: m.replace, why: m.why })
@@ -195,4 +265,5 @@ console.log(`R0 rename berkas .ts : ${report.R0.length}`)
 console.log(`R1 class mati di v3  : ${report.R1.length} kemunculan, ${uniq(report.R1, (r) => r.token)} token unik`)
 console.log(`R2 tipografi resp.   : ${report.R2.length} string (${report.R2skipped.length} dilewati)`)
 console.log(`R3 manual            : ${report.R3.length}`)
+console.log(`R4 divide-* v3       : ${report.R4.length} string`)
 console.log(APPLY ? 'DITERAPKAN ke sumber scratch.' : '(uji kering — tambahkan --apply untuk menulis)')

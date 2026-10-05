@@ -23,8 +23,21 @@ export const AUTH_ENDPOINTS = {
   refresh: `${AUTH_BASE}/refresh`,
   logout: `${AUTH_BASE}/logout`,
   sessions: `${AUTH_BASE}/sessions`,
-  session: (sessionId: string) => `${AUTH_BASE}/sessions/${sessionId}`
+  session: (sessionId: string) => `${AUTH_BASE}/sessions/${sessionId}`,
+  // Self-service customer — endpoint API sudah hidup (ubsc-api/src/routes/details/auth.ts:55-68,
+  // createCustomerSelfServiceRoutes di-mount di bawah /api/auth/customer). login & register
+  // sama-sama mengembalikan { accessToken, user } (register auto-login lewat issueCustomerSession).
+  register: `${AUTH_BASE}/register`,
+  verifyEmail: `${AUTH_BASE}/verify-email`,
+  resendVerification: `${AUTH_BASE}/resend-verification`,
+  forgotPassword: `${AUTH_BASE}/forgot-password`,
+  resetPassword: `${AUTH_BASE}/reset-password`
 } as const
+
+// Google OAuth: navigasi browser SUNGGUHAN (302 dari server), bukan panggilan fetch — jadi
+// dipakai sebagai window.location.href, bukan lewat axiosInstance. Path absolut (bukan relatif '/api'
+// baseURL axios) karena ini pindah halaman penuh.
+export const GOOGLE_AUTH_URL = '/api/auth/customer/google'
 
 // ===== Cookie sesi customer =====
 // Ditetapkan ubsc-api/src/services/auth-services.ts:

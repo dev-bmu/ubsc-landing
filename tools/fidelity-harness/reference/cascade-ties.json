@@ -1,0 +1,27 @@
+{
+ "examinedPairs": 576,
+ "breakpoints": [
+  379,
+  380,
+  430,
+  639,
+  640,
+  768,
+  1024,
+  1100,
+  1279,
+  1280,
+  1440,
+  1536,
+  1800
+ ],
+ "tagSubjectBespoke": [
+  ".lenis.lenis-smooth [data-lenis-prevent]",
+  ".ubsc-hero-orbit img",
+  ".ubsc-hero-orbit:hover img",
+  ".hero-bottom-bar video",
+  ".ubsc-hero-lite .ubsc-hero-orbit img",
+  ".auth-modal-open .auth-modal-visual img"
+ ],
+ "findings": []
+}

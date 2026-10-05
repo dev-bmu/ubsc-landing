@@ -13,6 +13,10 @@
 // ============================================================================
 const qs = new URLSearchParams(location.search)
 const W = Number(qs.get('w') || 1280)
+// Halaman sel (paginasi build-pages.mjs). Keyframes dibandingkan hanya bila ?keyframes=1 — nilainya dari
+// stylesheet, sama di setiap halaman, jadi cukup sekali per viewport.
+const PAGE = qs.get('page') || '0'
+const WITH_KEYFRAMES = qs.get('keyframes') === '1'
 const H = 900
 const FREEZE = '*,*::before,*::after{animation-play-state:paused!important;animation-delay:-0.7s!important;transition:none!important;caret-color:transparent!important}'
 
@@ -102,8 +106,16 @@ function normValue(prop, v) {
   if (/background-image|mask-image|border-image/.test(prop)) {
     // "to right in srgb" setara dengan "to right" untuk stop berwarna legacy (rgb/hex) — ruang
     // interpolasi default gradien legacy adalah sRGB (CSS Images 4). "in oklab" TIDAK dinormalkan.
-    out = out.replace(/ in srgb\b/g, '')
-    out = out.replace(/(repeating-)?(linear|radial|conic)-gradient\(((?:[^()]|\([^()]*\))*)\)/g, (m, rep, kind, inner) => `${rep || ''}${kind}-gradient(${resolveStops(inner)})`)
+    // Arah default (to bottom) dihilangkan Chromium, sehingga "to bottom in srgb" ditulis "(in srgb, ...".
+    out = out.replace(/ in srgb\b/g, '').replace(/\(in srgb,\s*/g, '(')
+    out = out.replace(/(repeating-)?(linear|radial|conic)-gradient\(((?:[^()]|\([^()]*\)|\((?:[^()]|\([^()]*\))*\))*)\)/g, (m, rep, kind, inner) => `${rep || ''}${kind}-gradient(${resolveStops(inner)})`)
+    // Gradien tunggal yang SEMUA stop-nya transparan tidak merender apa pun — setara `none`. Terjadi saat R1
+    // menghapus from-* yang mati di v3: v3 gagal menyusun --tw-gradient-stops (background-image jadi none),
+    // v4 punya nilai awal @property sehingga menyusun transparan -> transparan.
+    if (/^(repeating-)?(linear|radial|conic)-gradient\(/.test(out) && splitTop(out).length === 1) {
+      const alphas = [...out.matchAll(/rgba\(\d+,\d+,\d+,(\d+)\)/g)].map((m) => Number(m[1]))
+      if (alphas.length && alphas.every((a) => a === 0)) out = 'none'
+    }
   }
   if (prop === 'box-shadow' || prop === 'text-shadow') {
     // Buang lapisan yang tidak merender apa pun: transparan, ATAU offset/blur/spread semuanya nol
@@ -124,33 +136,76 @@ function normValue(prop, v) {
     // 9999px (v3) vs calc(infinity * 1px) (v4): keduanya melampaui setengah ukuran elemen apa pun.
     out = out.replace(/-?\d+(\.\d+)?(e\+\d+)?px/g, (x) => (parseFloat(x) >= 9999 ? 'FULLpx' : x))
   }
+  if (/^(background-position|mask-position|object-position)/.test(prop)) {
+    // Posisi nol tanpa bergantung satuan: `0% 0%` = `0px 0px` = offset nol. Minifier Next (cssnano-simple)
+    // menulis `background-position: initial` sebagai `0 0`, yang dihitung browser menjadi `0px 0px`.
+    out = zeroLengths(out)
+  }
+  if (prop === 'clip-path') out = normInset(out)
   // Rapikan noise float: 12.000001px -> 12px
   out = out.replace(/-?\d+\.\d{4,}/g, (x) => String(Math.round(parseFloat(x) * 1000) / 1000))
   return out
 }
-// Posisi stop gradien: v3 (minifier) membuang posisi yang sama dengan posisi implisit, v4 menuliskannya
-// ("a, b, c" vs "a 0%, b 50%, c 100%"). Keduanya dirender identik — samakan dengan menulis SEMUA posisi
-// secara eksplisit sesuai aturan CSS Images: stop pertama 0%, terakhir 100%, sisanya dibagi rata di
-// antara tetangga yang posisinya diketahui. Hanya menangani posisi persen tunggal; yang lain dibiarkan.
+// Panjang nol tidak bergantung satuan: `0%`, `0px`, `0` sama-sama nol. Minifier (Vite di Laravel, cssnano-simple di
+// Next) bebas membuang satuannya — mis. `@property --tw-gradient-from-position { initial-value: 0% }` menjadi `0`,
+// yang dihitung browser `0px`. Hanya dipakai pada properti yang nol-nya memang setara (bukan flex-basis).
+const zeroLengths = (s) => s.replace(/(^|[\s,(])-?0(?:\.0+)?(?:px|%)(?=$|[\s,)])/g, '$10')
+
+// clip-path inset(): bentuk singkat sama dengan bentuk panjang (`inset(0px)` = `inset(0px 0% 0px 0px)`), dan nol tidak
+// bergantung satuan. Minifier Next menyingkat `inset(0 0%)` menjadi `inset(0)`.
+function normInset(s) {
+  return s.replace(/inset\(([^()]*)\)/g, (m, args) => {
+    const [box, round] = args.split(/\s+round\s+/)
+    const t = box.trim().split(/\s+/).map((x) => zeroLengths(x))
+    const [top, right = top, bottom = top, left = right] = t
+    return `inset(${[top, right, bottom, left].join(' ')}${round ? ` round ${round}` : ''})`
+  })
+}
+
+// Posisi stop gradien — semua bentuk berikut dirender identik menurut CSS Images:
+//  - posisi implisit: v3 (minifier) membuang posisi yang sama dengan posisi implisit, v4 menuliskannya ("a, b, c" vs
+//    "a 0%, b 50%, c 100%"). Stop pertama tanpa posisi = 0, terakhir = 100%, sisanya dibagi rata di antara tetangga
+//    yang posisinya diketahui;
+//  - panjang nol tanpa satuan (`0px` = `0%`);
+//  - color-stop fix-up: posisi yang lebih kecil dari posisi terbesar sebelumnya dijepit ke posisi itu. cssnano-simple
+//    menulis garis tajam `x 1px, transparent 1px` sebagai `x 1px, transparent 0` — keduanya garis tajam di 1px.
+// Posisi yang tidak bisa dibandingkan (calc, satuan campuran bukan nol) dibiarkan sebagai teks.
 function resolveStops(inner) {
   const parts = splitTop(inner).map((p) => p.trim())
   const isDirection = (p) => /^(to |from |at |\d+(\.\d+)?(deg|turn|rad|grad)|circle|ellipse|closest|farthest)/.test(p) && !/rgba\(/.test(p)
-  const head = parts.length && isDirection(parts[0]) ? [parts.shift()] : []
+  const head = parts.length && isDirection(parts[0]) ? [zeroLengths(parts.shift())] : []
   const stops = parts.map((p) => {
-    const m = p.match(/^(rgba\([^)]*\)(?:!oog)?)(?:\s+(-?\d+(?:\.\d+)?)%)?$/)
-    return m ? { color: m[1], pos: m[2] === undefined ? null : parseFloat(m[2]) } : null
+    const m = p.match(/^(rgba\([^)]*\)(?:!oog)?)(?:\s+(.+))?$/)
+    if (!m) return null
+    const raw = m[2]
+    if (raw === undefined) return { color: m[1], pos: null }
+    const num = raw.match(/^(-?\d+(?:\.\d+)?)(%|px)$/)
+    if (!num) return { color: m[1], pos: raw, text: true }
+    const value = parseFloat(num[1])
+    return { color: m[1], pos: value, unit: value === 0 ? '' : num[2] }
   })
   if (!stops.length || stops.some((s) => s === null)) return inner
-  if (stops[0].pos === null) stops[0].pos = 0
-  if (stops[stops.length - 1].pos === null) stops[stops.length - 1].pos = 100
+  if (stops[0].pos === null) Object.assign(stops[0], { pos: 0, unit: '' })
+  if (stops[stops.length - 1].pos === null) Object.assign(stops[stops.length - 1], { pos: 100, unit: '%' })
   for (let i = 1; i < stops.length - 1; i++) {
     if (stops[i].pos !== null) continue
     let j = i
     while (stops[j].pos === null) j++
-    const start = stops[i - 1].pos, end = stops[j].pos, span = j - (i - 1)
-    for (let k = i; k < j; k++) stops[k].pos = start + ((end - start) * (k - (i - 1))) / span
+    const a = stops[i - 1], b = stops[j]
+    // Interpolasi hanya antar persen (nol termasuk); tetangga teks atau px tidak bisa dibagi tanpa panjang garis.
+    if (a.text || b.text || (a.unit && a.unit !== '%') || (b.unit && b.unit !== '%')) return inner
+    const span = j - (i - 1)
+    for (let k = i; k < j; k++) Object.assign(stops[k], { pos: a.pos + ((b.pos - a.pos) * (k - (i - 1))) / span, unit: '%' })
   }
-  return [...head, ...stops.map((s) => `${s.color} ${Math.round(s.pos * 100) / 100}%`)].join(', ')
+  // Color-stop fix-up.
+  let max = null
+  for (const s of stops) {
+    if (s.text) { max = null; continue }
+    if (max && (s.pos === 0 ? max.pos > 0 : s.unit === max.unit && s.pos < max.pos)) Object.assign(s, { pos: max.pos, unit: max.unit })
+    if (!max || (s.unit === max.unit && s.pos > max.pos) || (max.pos === 0 && s.pos > 0)) max = { pos: s.pos, unit: s.unit }
+  }
+  const fmt = (s) => (s.text ? s.pos : s.pos === 0 ? '0' : `${Math.round(s.pos * 100) / 100}${s.unit}`)
+  return [...head, ...stops.map((s) => `${s.color} ${fmt(s)}`)].join(', ')
 }
 
 function splitTop(s) {
@@ -242,8 +297,18 @@ function diffStyles(csA, csB, props, where, out, elA, elB) {
     if (na === nb) continue
     out.push({ ...where, prop: p, a, b, na, nb })
   }
-  const ta = composed(csA, elA), tb = composed(csB, elB)
+  // Elemen display:none tidak punya kotak: Chromium menulis transform-nya 'none' (v3, transform klasik)
+  // tetapi tetap melaporkan properti individual scale/translate (v4). Tidak ada yang dirender — lewati.
+  const bothHidden = csA.getPropertyValue('display') === 'none' && csB.getPropertyValue('display') === 'none'
+  const ta = bothHidden ? '' : composed(csA, elA), tb = bothHidden ? '' : composed(csB, elB)
   if (ta !== tb) out.push({ ...where, prop: '(transform efektif)', a: ta, b: tb, na: ta, nb: tb })
+}
+
+// Keyframe yang menganimasikan ukuran dari/ke nol dan konteksnya sudah diperiksa: di sana `0%` = `0px`.
+const ZERO_SIZE_KEYFRAMES = {
+  // app.css: .entrance-progress-fill { width: 0% } di dalam .entrance-progress { position: absolute; left: 0; right: 0 }
+  // — lebar induk tentu, jadi persen tidak pernah jatuh ke perilaku auto.
+  'entrance-progress-fill': 'induk absolute left/right 0'
 }
 
 function keyframesOf(doc) {
@@ -265,6 +330,21 @@ function keyframesOf(doc) {
                 v = [m.m11, m.m12, m.m13, m.m14, m.m21, m.m22, m.m23, m.m24, m.m31, m.m32, m.m33, m.m34, m.m41, m.m42, m.m43, m.m44].map((x) => Math.round(x * 1000) / 1000).join(',')
               } catch (e) { /* biarkan teks aslinya (mis. mengandung calc atau persen) */ }
             }
+            // Teks transform yang tidak bisa jadi matriks (var(), persen): samakan penulisan yang setara.
+            //  - spasi di dalam argumen fungsi: minifier v3 membuangnya, v4 menuliskannya
+            //  - skew(a) satu argumen = skewX(a) (CSS Transforms 1); minifier v3 menulis skew(), v4 skewX()
+            if (p === 'transform' && typeof v === 'string') {
+              v = v.replace(/\s*,\s*/g, ',').replace(/\bskew\(([^,()]+)\)/g, 'skewX($1)')
+            }
+            // Nilai deklarasi keyframe adalah teks specified, bukan computed:
+            //  - spasi setelah koma fallback var() (`var(--x, 1)` vs `var(--x,1)`) tidak bermakna;
+            //  - panjang nol tanpa satuan (`0%` vs `0`) setara untuk transform, posisi, clip-path, dst. TIDAK untuk
+            //    flex-basis dan ukuran (width/height/min-/max-): persen di konteks shrink-to-fit diperlakukan auto saat
+            //    menghitung ukuran intrinsik induk, 0px tidak. Ukuran hanya dinormalkan untuk keyframe yang konteksnya
+            //    sudah diperiksa di ZERO_SIZE_KEYFRAMES.
+            if (/var\(/.test(v)) v = v.replace(/\s*,\s*/g, ',')
+            const sizing = /^(flex|(min-|max-)?(width|height)$|inline-size|block-size)/.test(p)
+            if (!sizing || ZERO_SIZE_KEYFRAMES[r.name]) v = zeroLengths(v)
             decl.push(p + ':' + normValue(p, v))
           }
           frames.push(k.keyText.replace(/\s+/g, '') + '{' + decl.sort().join(';') + '}')
@@ -282,7 +362,7 @@ function keyframesOf(doc) {
 }
 
 ;(async () => {
-  const [fa, fb] = await Promise.all([loadFrame('/baseline.html'), loadFrame('/candidate.html')])
+  const [fa, fb] = await Promise.all([loadFrame(`/baseline-${PAGE}.html`), loadFrame(`/candidate-${PAGE}.html`)])
   const A = fa.contentDocument, B = fb.contentDocument
   // FREEZE sudah ada di <head> kedua halaman sejak render pertama (lihat build-pages.mjs).
   await Promise.all([A.fonts.ready, B.fonts.ready])
@@ -322,13 +402,13 @@ function keyframesOf(doc) {
     }
   }
 
-  // Elemen root: html & body (base layer: font-bdo, background #252525, antialiased).
-  for (const tag of ['html', 'body']) {
+  // Elemen root: html & body (base layer: font-bdo, background #252525, antialiased). Sekali saja.
+  for (const tag of WITH_KEYFRAMES ? ['html', 'body'] : []) {
     diffStyles(A.defaultView.getComputedStyle(A.querySelector(tag)), B.defaultView.getComputedStyle(B.querySelector(tag)), props, { cell: 'root', label: `<${tag}>`, probe: 0, pseudo: '' }, diffs, null, null)
   }
 
   // @keyframes — struktural via CSSOM.
-  const ka = keyframesOf(A), kb = keyframesOf(B)
+  const ka = WITH_KEYFRAMES ? keyframesOf(A) : new Map(), kb = WITH_KEYFRAMES ? keyframesOf(B) : new Map()
   const keyframeDiffs = []
   for (const [name, body] of ka) {
     if (!kb.has(name)) keyframeDiffs.push({ name, issue: 'HILANG di kandidat' })
@@ -336,7 +416,7 @@ function keyframesOf(doc) {
   }
   for (const name of kb.keys()) if (!ka.has(name)) keyframeDiffs.push({ name, issue: 'hanya ada di kandidat' })
 
-  window.__result = { width: W, cells: cellsA.length, props: props.length, diffs, structural, keyframeDiffs, unparsed: [...unparsed].slice(0, 50) }
+  window.__result = { width: W, page: PAGE, keyframesChecked: ka.size, cells: cellsA.length, props: props.length, diffs, structural, keyframeDiffs, unparsed: [...unparsed].slice(0, 50) }
   window.__done = true
 })()
 </script>

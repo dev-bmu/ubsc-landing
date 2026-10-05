@@ -1,8 +1,10 @@
 // Membangun daftar sel styleguide dari inventaris oracle.
 // Satu sumber kebenaran untuk kedua sisi: baseline (class v3) dan kandidat (class v4 hasil codemod).
 // Keluaran:
-//   cells.json         — daftar sel (id, jenis, class v3, struktur)
+//   cells.json         — daftar sel (id, jenis, class v3, struktur; combo juga membawa class v4)
 //   Styleguide.tsx     — class v3 dalam className={"..."}; umpan untuk codemod @tailwindcss/upgrade
+//
+// Pemakaian: node gen-cells.mjs <inventory.json> <out-dir> [korpus.json]
 import fs from 'node:fs'
 
 const [, , inventoryPath, outDir] = process.argv
@@ -117,65 +119,31 @@ const hazards = [
 ]
 for (const h of hazards) cells.push({ id: id('h'), kind: 'hazard', tag: 'div', ...h })
 
-// ===== 8. String className ASLI dari TSX Laravel =====
+// ===== 8. String className ASLI — korpus berpasangan v3 (Laravel) <-> v4 (sumber migrasi) =====
 // Sel satu-class tidak bisa mendeteksi dua hal: interpolasi gradien (bg-gradient-to-r saja tidak
 // merender apa pun tanpa from-/to-) dan interaksi class bespoke + utilitas pada properti yang sama
 // (yang menentukan apakah cascade layer CSS bespoke setara dengan v3). Korpus pemakaian nyata menutup
-// keduanya. Codemod memetakan tiap string utuh, jadi urutan/penggabungan class ikut setia.
-import path from 'node:path'
-const laravelJs = process.argv[4]
-if (laravelJs) {
-  const known = new Set([...inv.utilities.map((u) => u.name), ...inv.bespoke.map((b) => b.name)])
-  const files = []
-  const walk = (d) => {
-    for (const f of fs.readdirSync(d, { withFileTypes: true })) {
-      const p = path.join(d, f.name)
-      if (f.isDirectory()) walk(p)
-      else if (/\.tsx?$/.test(f.name)) files.push(p)
-    }
+// keduanya.
+//
+// Sisi v4 sel combo adalah literal dari SUMBER MIGRASI (codemod + koreksi R0–R3, lihat corpus.mjs dan
+// corrections.mjs) — teks yang benar-benar di-port di Fase 4–8 — bukan hasil codemod ulang atas
+// Styleguide.tsx. Karena itu combo tidak ikut Styleguide.tsx.
+const corpusPath = process.argv[4]
+if (corpusPath) {
+  const { pairs, misaligned } = JSON.parse(fs.readFileSync(corpusPath, 'utf8'))
+  if (misaligned.length) throw new Error(`korpus punya ${misaligned.length} berkas tidak sejajar — sel combo tidak lengkap`)
+  for (const pair of pairs) {
+    cells.push({ id: id('x'), kind: 'combo', label: pair.v3, tag: 'div', cls: pair.v3, v4: pair.v4, files: pair.files })
   }
-  walk(laravelJs)
-
-  // Kode yang Rewrite.md nyatakan MATI ("Yang dihapus, tidak di-port") tidak ikut korpus: paritas
-  // hanya perlu dibuktikan untuk kode yang benar-benar akan ada di aplikasi baru.
-  const DEAD = [
-    /Landing[\\/]FluidGlass(Cursor)?\.tsx$/,
-    /Landing[\\/]MembershipModal\.tsx$/,
-    /UserDashboard[\\/]UserDashboardModal\.tsx$/,
-    /Landing[\\/](ArenaCard|ClassCard)\.tsx$/,
-    /(FacilityRow|DoughnutPlaceholder|IdentityQueueCard)\.tsx$/,
-    /Components[\\/](ApplicationLogo|Checkbox|DangerButton|Dropdown|InputLabel|Modal|NavLink|PrimaryButton|ResponsiveNavLink|SecondaryButton|TextInput)\.tsx$/,
-    /Layouts[\\/](AuthenticatedLayout|GuestLayout)\.tsx$/,
-    /Pages[\\/]Profile[\\/]/
-  ]
-  const live = files.filter((f) => !DEAD.some((re) => re.test(f)))
-  console.error(`korpus: ${live.length} berkas hidup (${files.length - live.length} berkas mati dikeluarkan)`)
-
-  const combos = new Set()
-  for (const f of live) {
-    let src = fs.readFileSync(f, 'utf8')
-    // STAT_GRADIENT_* di tokens.ts: dead code (Rewrite.md) — v3 tidak pernah men-generate class-nya
-    // karena glob content v3 hanya memindai *.tsx.
-    if (/tokens\.ts$/.test(f)) src = src.replace(/STAT_GRADIENT_[A-Z]+:\s*\n?\s*"[^"]*",?/g, '')
-    const lits = []
-    for (const m of src.matchAll(/"([^"\n]{3,600})"|'([^'\n]{3,600})'/g)) lits.push(m[1] ?? m[2])
-    for (const m of src.matchAll(/`([^`]{3,2000})`/g)) for (const part of m[1].split(/\$\{[^}]*\}/)) lits.push(part)
-    for (const lit of lits) {
-      const toks = lit.trim().split(/\s+/).filter(Boolean)
-      if (toks.length < 2) continue
-      if (toks.filter((t) => known.has(t)).length / toks.length < 0.6) continue
-      combos.add(toks.join(' '))
-    }
-  }
-  for (const c of [...combos].sort()) cells.push({ id: id('x'), kind: 'combo', label: c, tag: 'div', cls: c, text: null })
 }
 
 // ===== Keluaran =====
 fs.writeFileSync(`${outDir}/cells.json`, JSON.stringify(cells))
 
 // Styleguide.tsx: SATU className per sel supaya pemetaan v3 -> v4 bisa dibaca balik per id.
+// Combo tidak ikut — class v4-nya sudah dibawa sel dari sumber migrasi.
 const lines = cells
-  .filter((c) => c.cls || c.parts)
+  .filter((c) => (c.cls || c.parts) && c.kind !== 'combo')
   .map((c) => {
     if (c.parts) return c.parts.map((p, i) => `      <div data-cell="${c.id}" data-depth="${i}" className={${JSON.stringify(p)}} />`).join('\n')
     return `      <div data-cell="${c.id}" className={${JSON.stringify(c.cls)}} />`

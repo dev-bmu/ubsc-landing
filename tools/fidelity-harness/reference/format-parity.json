@@ -1,0 +1,350 @@
+{
+ "zones": [
+  "Asia/Jakarta",
+  "Asia/Makassar",
+  "Asia/Jayapura",
+  "UTC",
+  "America/Los_Angeles",
+  "Pacific/Kiritimati",
+  "Pacific/Pago_Pago"
+ ],
+ "cases": [
+  {
+   "id": "N1",
+   "laravel": "\"Rp \" + n.toLocaleString(\"id-ID\")  ·  `Rp ${n.toLocaleString(\"id-ID\")}`",
+   "port": "formatRupiah(n)",
+   "domain": "bilangan bulat — semua kolom uang Int di schema.prisma (Transaction.amount cast integer di Laravel)",
+   "sites": [
+    "Pages/Bookings/Payment.tsx:61",
+    "lib/calendar.ts:108",
+    "Pages/Bookings/History.tsx:34",
+    "Components/Landing/Navbar.tsx:1326",
+    "Pages/Admin/CheckIn/Show.tsx:25",
+    "Pages/Admin/CheckIn/Index.tsx:30",
+    "Pages/Admin/Bookings/Index.tsx:74",
+    "Pages/Admin/Facilities/Pricing.tsx:170",
+    "Components/Booking/BookingListItem.tsx:65",
+    "Pages/Admin/Payments/Index.tsx:32",
+    "Pages/Admin/MembershipPlans/Index.tsx:111",
+    "Pages/Admin/Memberships/Index.tsx:180"
+   ],
+   "kind": "number",
+   "exact": true,
+   "failures": [],
+   "zoneDependentLaravel": [],
+   "inputs": 12
+  },
+  {
+   "id": "N2",
+   "laravel": "\"Rp \" + new Intl.NumberFormat(\"id-ID\").format(n)",
+   "port": "formatRupiah(n)",
+   "domain": "bilangan bulat (nominal transaksi)",
+   "sites": [
+    "Components/UserDashboard/PaymentHistoryModal.tsx:46"
+   ],
+   "kind": "number",
+   "exact": true,
+   "failures": [],
+   "zoneDependentLaravel": [],
+   "inputs": 12
+  },
+  {
+   "id": "N3",
+   "laravel": "n.toLocaleString(\"id-ID\")  ·  new Intl.NumberFormat(\"id-ID\").format(n)",
+   "port": "formatNumberID(n)",
+   "domain": "bilangan bulat (hitungan, harga plan, sisa < 1.000 pada formatter ringkas; Payments:201 = Number(head), teks \"Rp \" JSX tetap)",
+   "sites": [
+    "Pages/Admin/Finance/Index.tsx:436",
+    "Pages/Admin/Finance/Index.tsx:440",
+    "Pages/Admin/Dashboard.tsx:100",
+    "Pages/Admin/Dashboard.tsx:2103",
+    "Components/Landing/SectionTwo.tsx:113",
+    "Pages/Admin/Payments/Index.tsx:201"
+   ],
+   "kind": "number",
+   "exact": true,
+   "failures": [],
+   "zoneDependentLaravel": [],
+   "inputs": 12
+  },
+  {
+   "id": "N4",
+   "laravel": "(amount / 1_000).toLocaleString(\"id-ID\", { maximumFractionDigits: 0 })",
+   "port": "formatNumberID(amount / 1_000)",
+   "domain": "bilangan real",
+   "sites": [
+    "Pages/Admin/Finance/Index.tsx:424",
+    "Pages/Admin/Finance/Index.tsx:434",
+    "Pages/Admin/Dashboard.tsx:98"
+   ],
+   "kind": "number",
+   "exact": true,
+   "failures": [],
+   "zoneDependentLaravel": [],
+   "inputs": 20
+  },
+  {
+   "id": "N5",
+   "laravel": "x.toLocaleString(\"id-ID\", { maximumFractionDigits: 1 })",
+   "port": "formatNumberIntl(x, { maximumFractionDigits: 1 })",
+   "domain": "bilangan real (nominal ringkas M/JT, persentase tren)",
+   "sites": [
+    "Pages/Admin/Finance/Index.tsx:418",
+    "Pages/Admin/Finance/Index.tsx:421",
+    "Pages/Admin/Finance/Index.tsx:431",
+    "Pages/Admin/Finance/Index.tsx:556",
+    "Pages/Admin/Finance/Index.tsx:711",
+    "Pages/Admin/Dashboard.tsx:95"
+   ],
+   "kind": "number",
+   "exact": true,
+   "failures": [],
+   "zoneDependentLaravel": [],
+   "inputs": 20
+  },
+  {
+   "id": "N6",
+   "laravel": "new Intl.NumberFormat(\"id-ID\", { style: \"currency\", currency: \"IDR\", maximumFractionDigits: 0 }).format(n)",
+   "port": "formatNumberIntl(n, { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 })",
+   "domain": "bilangan real (NBSP setelah \"Rp\" ikut)",
+   "sites": [
+    "Pages/Admin/Finance/Index.tsx:413",
+    "Pages/Admin/Dashboard.tsx:104",
+    "Pages/Admin/Dashboard.tsx:2102"
+   ],
+   "kind": "number",
+   "exact": true,
+   "failures": [],
+   "zoneDependentLaravel": [],
+   "inputs": 20
+  },
+  {
+   "id": "N7",
+   "laravel": "place.reviews.toLocaleString()  (tanpa locale — rujukan: browser id-ID)",
+   "port": "formatNumberID(place.reviews)",
+   "domain": "bilangan bulat. Browser en-US di Laravel menampilkan \"1,570\"; port mengunci id-ID (R13), jadi screenshot-diff Fase 4+ wajib locale id-ID",
+   "sites": [
+    "Components/Landing/LocationMap.tsx:113"
+   ],
+   "kind": "number",
+   "exact": true,
+   "failures": [],
+   "zoneDependentLaravel": [],
+   "inputs": 12
+  },
+  {
+   "id": "D1",
+   "laravel": "new Intl.DateTimeFormat(\"id-ID\", { month: \"long\", year: \"numeric\" }).format(new Date(year, m - 1, 1))",
+   "port": "formatCalendarDateIntl(`${monthKey}-01`, { month: 'long', year: 'numeric' })",
+   "domain": "kunci bulan \"YYYY-MM\"",
+   "sites": [
+    "Components/Booking/Class/ClassMonthPicker.tsx:396"
+   ],
+   "kind": "calendar",
+   "exact": true,
+   "failures": [],
+   "zoneDependentLaravel": [],
+   "inputs": 5
+  },
+  {
+   "id": "D2",
+   "laravel": "LONG_DATE.format(new Date(`${dateStr}T12:00:00`))  — LONG_DATE = { weekday: \"long\", day: \"numeric\", month: \"long\", year: \"numeric\" }",
+   "port": "formatCalendarDateIntl(dateStr, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })",
+   "domain": "kunci tanggal \"YYYY-MM-DD\"",
+   "sites": [
+    "lib/calendar.ts:89"
+   ],
+   "kind": "calendar",
+   "exact": true,
+   "failures": [],
+   "zoneDependentLaravel": [],
+   "inputs": 5
+  },
+  {
+   "id": "D3",
+   "laravel": "SHORT_DATE.format(new Date(`${dateStr}T12:00:00`))  — SHORT_DATE = { day: \"numeric\", month: \"short\" }",
+   "port": "formatCalendarDateIntl(dateStr, { day: 'numeric', month: 'short' })",
+   "domain": "kunci tanggal \"YYYY-MM-DD\"",
+   "sites": [
+    "lib/calendar.ts:96"
+   ],
+   "kind": "calendar",
+   "exact": true,
+   "failures": [],
+   "zoneDependentLaravel": [],
+   "inputs": 5
+  },
+  {
+   "id": "D4",
+   "laravel": "new Date(y, m - 1, d).toLocaleDateString(\"id-ID\", { weekday: \"long\", day: \"numeric\", month: \"long\", year: \"numeric\" })",
+   "port": "formatCalendarDateIntl(dateStr, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })",
+   "domain": "kunci tanggal \"YYYY-MM-DD\"",
+   "sites": [
+    "Pages/Admin/Bookings/Index.tsx:87",
+    "Pages/Admin/Memberships/Index.tsx:196"
+   ],
+   "kind": "calendar",
+   "exact": true,
+   "failures": [],
+   "zoneDependentLaravel": [],
+   "inputs": 5
+  },
+  {
+   "id": "D5",
+   "laravel": "new Date(y, m - 1, d).toLocaleDateString(\"id-ID\", { day: \"numeric\", month: \"short\", year: \"numeric\" })",
+   "port": "formatCalendarDateIntl(dateStr, { day: 'numeric', month: 'short', year: 'numeric' })",
+   "domain": "kunci tanggal \"YYYY-MM-DD\"",
+   "sites": [
+    "Pages/Admin/Memberships/Index.tsx:186"
+   ],
+   "kind": "calendar",
+   "exact": true,
+   "failures": [],
+   "zoneDependentLaravel": [],
+   "inputs": 5
+  },
+  {
+   "id": "D6",
+   "laravel": "new Date(y, m - 1, d).toLocaleDateString(\"id-ID\", { day: \"numeric\", month: \"short\" })",
+   "port": "formatCalendarDateIntl(dateStr, { day: 'numeric', month: 'short' })",
+   "domain": "kunci tanggal \"YYYY-MM-DD\"",
+   "sites": [
+    "Pages/Admin/Settings/Schedules/Index.tsx:151"
+   ],
+   "kind": "calendar",
+   "exact": true,
+   "failures": [],
+   "zoneDependentLaravel": [],
+   "inputs": 5
+  },
+  {
+   "id": "D7",
+   "laravel": "new Date().toLocaleDateString(\"id-ID\", { day: \"2-digit\", month: \"long\", year: \"numeric\" })",
+   "port": "formatDateIntl(new Date(), { day: '2-digit', month: 'long', year: 'numeric' })",
+   "domain": "instan (sekarang)",
+   "sites": [
+    "Pages/Admin/Dashboard.tsx:2088"
+   ],
+   "kind": "instant",
+   "exact": true,
+   "failures": [],
+   "zoneDependentLaravel": [],
+   "inputs": 5
+  },
+  {
+   "id": "D8",
+   "laravel": "new Date().toLocaleDateString(\"id-ID\", { day: \"2-digit\", month: \"2-digit\", year: \"numeric\" })",
+   "port": "formatDateIntl(new Date(), { day: '2-digit', month: '2-digit', year: 'numeric' })",
+   "domain": "instan (sekarang)",
+   "sites": [
+    "Pages/Admin/Finance/Index.tsx:1420"
+   ],
+   "kind": "instant",
+   "exact": true,
+   "failures": [],
+   "zoneDependentLaravel": [],
+   "inputs": 5
+  },
+  {
+   "id": "D9",
+   "laravel": "new Date(t.created_at).toLocaleDateString(\"id-ID\", { day: \"2-digit\", month: \"short\", year: \"numeric\" })  — kabel: toDateTimeString()",
+   "port": "formatDateIntl(createdAt, { day: '2-digit', month: 'short', year: 'numeric' })  — kabel: ISO UTC",
+   "domain": "instan transaksi",
+   "sites": [
+    "Components/UserDashboard/PaymentHistoryModal.tsx:51"
+   ],
+   "kind": "instant",
+   "exact": true,
+   "failures": [],
+   "zoneDependentLaravel": [],
+   "inputs": 5
+  },
+  {
+   "id": "D10",
+   "laravel": "new Date(t.booking_date).toLocaleDateString(\"id-ID\", { day: \"2-digit\", month: \"short\", year: \"numeric\" })  — kabel: cast date mentah",
+   "port": "formatCalendarDateIntl(bookingDate, { day: '2-digit', month: 'short', year: 'numeric' })  — kabel: \"YYYY-MM-DD\"",
+   "domain": "tanggal booking",
+   "sites": [
+    "Components/UserDashboard/PaymentHistoryModal.tsx:51"
+   ],
+   "kind": "instant",
+   "exact": true,
+   "failures": [],
+   "zoneDependentLaravel": [],
+   "inputs": 5
+  },
+  {
+   "id": "D11",
+   "laravel": "`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` (todayStr, nomor laporan LPR/…)",
+   "port": "toJakartaDateKey(new Date())",
+   "domain": "instan (sekarang) — bukan pemanggilan Intl, tetapi komponen tanggal lokal yang sama rawannya",
+   "sites": [],
+   "extraSites": [
+    "lib/calendar.ts:86",
+    "Pages/Admin/Dashboard.tsx:2089"
+   ],
+   "kind": "instant",
+   "exact": true,
+   "failures": [],
+   "zoneDependentLaravel": [],
+   "inputs": 5
+  }
+ ],
+ "dead": [
+  "Components/UserDashboard/UserDashboardModal.tsx:173",
+  "Components/UserDashboard/UserDashboardModal.tsx:178"
+ ],
+ "traps": [
+  {
+   "id": "T1",
+   "wrong": "formatRupiah(n) untuk pola style \"currency\" IDR",
+   "why": "Intl currency menyisipkan NBSP, formatRupiah spasi biasa",
+   "input": 1500000,
+   "laravel": "Rp 1.500.000",
+   "port": "Rp 1.500.000",
+   "differs": true
+  },
+  {
+   "id": "T2",
+   "wrong": "formatNumberID(x) untuk x.toLocaleString(\"id-ID\") pada pecahan",
+   "why": "formatNumberID membulatkan (maximumFractionDigits 0), toLocaleString menampilkan hingga 3 desimal",
+   "input": 1234.5,
+   "laravel": "1.234,5",
+   "port": "1.235",
+   "differs": true
+  },
+  {
+   "id": "T3",
+   "wrong": "formatDateID(now) untuk { day: \"2-digit\", month: \"long\", year: \"numeric\" }",
+   "why": "formatDateID memakai hari numeric (\"5\"), Laravel \"05\"",
+   "input": "2026-10-05T01:00:00Z",
+   "laravel": "05 Oktober 2026",
+   "port": "5 Oktober 2026",
+   "differs": true
+  },
+  {
+   "id": "T4",
+   "wrong": "formatDateIntl(new Date(y, m - 1, d), opsi) di browser WIT",
+   "why": "tengah malam lokal WIT = 22.00 WIB hari sebelumnya; tanggal kalender harus lewat formatCalendarDateIntl",
+   "input": "2026-10-05",
+   "laravel": "Senin, 5 Oktober 2026",
+   "port": "Minggu, 4 Oktober 2026",
+   "differs": true
+  },
+  {
+   "id": "T5",
+   "wrong": "new Date().toISOString().slice(0, 10) sebagai kunci tanggal hari ini",
+   "why": "memberi tanggal UTC — tertinggal sehari pada 00.00–06.59 WIB (17.00–23.59 UTC)",
+   "input": "2026-10-05T17:30:00Z",
+   "laravel": "2026-10-06",
+   "port": "2026-10-05",
+   "differs": true
+  }
+ ],
+ "coverage": {
+  "calls": 44,
+  "mapped": 44,
+  "unmapped": [],
+  "stale": []
+ }
+}

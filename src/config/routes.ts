@@ -38,12 +38,17 @@ export const routes = {
   bookingPayment: (bookingId: string) => `/booking/${bookingId}/pembayaran` as const,
   bookingHistory: () => '/riwayat-booking' as const,
 
+  // ===== Membership lewat web (tahap C) =====
+  membershipCheckout: (planId: string) => `/membership/daftar/${planId}` as const,
+  membershipPayment: (membershipId: string) => `/membership/${membershipId}/pembayaran` as const,
+
   // ===== Halaman auth yang memang berdiri sendiri =====
-  // Hanya empat ini yang benar-benar halaman. Login/register memakai modal, lihat authModal di bawah.
+  // Hanya tiga ini yang benar-benar halaman. Login/register memakai modal, lihat authModal di bawah.
+  // Dua yang terakhir dibuka dari tautan email: path + `?token=` WAJIB sama dengan verifyUrl() dan
+  // resetUrl() di ubsc-api/src/services/registration-services.ts.
   forgotPassword: () => '/forgot-password' as const,
-  resetPassword: (token: string) => `/reset-password/${token}` as const,
-  confirmPassword: () => '/confirm-password' as const,
-  verifyEmail: () => '/verify-email' as const
+  resetPassword: () => '/reset-password' as const,
+  verifyEmail: () => '/verifikasi-email' as const
 } as const
 
 // ===== Modal auth (login / register) =====
@@ -82,7 +87,11 @@ export const matchPrefix = (path: string, prefix: string) => path === prefix || 
 // dinamis. Menjadikan '/booking' sebagai prefix protected akan menutup halaman publiknya.
 export const PROTECTED_ROUTE_PREFIXES = ['/riwayat-booking'] as const
 
-export const PROTECTED_ROUTE_PATTERNS = [/^\/booking\/[^/]+\/pembayaran\/?$/] as const
+export const PROTECTED_ROUTE_PATTERNS = [
+  /^\/booking\/[^/]+\/pembayaran\/?$/,
+  /^\/membership\/daftar\/[^/]+\/?$/,
+  /^\/membership\/[^/]+\/pembayaran\/?$/
+] as const
 
 export const isProtectedPath = (path: string): boolean =>
   PROTECTED_ROUTE_PREFIXES.some((prefix) => matchPrefix(path, prefix)) || PROTECTED_ROUTE_PATTERNS.some((pattern) => pattern.test(path))

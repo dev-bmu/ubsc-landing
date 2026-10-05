@@ -12,6 +12,8 @@ export interface AuthUser {
   // (unit - cluster - division) warisan PERSURATAN tidak dipakai UBSC.
   // TODO Fase 1: AuthUser pindah ke src/types/contracts (hasil sync:contracts).
   permissions?: string[]
+  /** ISO 8601; null = email belum diverifikasi. undefined hanya dari sesi lama sebelum field ini ada. */
+  emailVerifiedAt?: string | null
 }
 
 export interface LoginResponse {

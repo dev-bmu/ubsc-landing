@@ -5,9 +5,11 @@ import fs from 'node:fs'
 
 const [, , oraclePath, candidatePath, cellsPath, v4TsxPath, outPath] = process.argv
 
+// Nama class dari CSS, termasuk escape heksadesimal (`\2c ` untuk koma) yang ditulis sebagian minifier.
+const unescapeCss = (s) => s.replace(/\\([0-9a-fA-F]{1,6})\s?|\\(.)/g, (_, hex, ch) => (hex ? String.fromCodePoint(parseInt(hex, 16)) : ch))
 const classesIn = (css) => {
   const set = new Set()
-  for (const m of css.matchAll(/\.((?:\\.|[\w-])+)/g)) set.add(m[1].replace(/\\(.)/g, '$1'))
+  for (const m of css.matchAll(/\.((?:\\[0-9a-fA-F]{1,6}\s?|\\.|[\w-])+)/g)) set.add(unescapeCss(m[1]))
   return set
 }
 const v3set = classesIn(fs.readFileSync(oraclePath, 'utf8'))

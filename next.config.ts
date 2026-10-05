@@ -60,6 +60,21 @@ const nextConfig: NextConfig = {
       {
         source: '/uploads/:path*',
         destination: `${API_BASE_URL}/uploads/:path*`
+      },
+      // Video reel TIDAK ikut git (R9): berkasnya tinggal di direktori media bersama dan dipindahkan
+      // dengan ubsc-api/ops/scripts/sync-media.sh. Komponen tetap menulis src="/assets/reels/..." persis
+      // seperti Laravel — jalur inilah yang membuat path itu tetap menemukan berkasnya.
+      //
+      // Array rewrites polos berjalan SETELAH filesystem (afterFiles). Itu yang membuat prefiks ini boleh
+      // dipakai bersama: thumbnail .avif ada di public/assets/reels/ dan dilayani Next lebih dulu, hanya
+      // .mp4 yang tidak ada di sana dan jatuh ke rewrite. Jangan pindahkan ke beforeFiles — thumbnail akan
+      // ikut diproksikan dan hilang.
+      //
+      // Seperti dua rewrite di atas, ini jalur DEV: di produksi nginx menerminasi /assets/reels sendiri
+      // dari /srv/ubsc/media dan permintaan tidak pernah sampai ke Next.
+      {
+        source: '/assets/reels/:path*',
+        destination: `${API_BASE_URL}/media/reels/:path*`
       }
     ]
   }

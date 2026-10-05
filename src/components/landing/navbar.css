@@ -1,0 +1,258 @@
+/* =====================================================================
+   CSS kinetik Navbar — port dari blok yang di Laravel disuntik runtime
+   lewat document.createElement('style') id 'ubsc-kinetic-nav-styles'.
+   Dipindah ke berkas ini dan diimpor Navbar.tsx supaya CSS hadir saat SSR
+   (injeksi useEffect menyebabkan FOUC navbar polos di paint pertama).
+   Class-class ini TIDAK ada di app.css Laravel — jadi bukan bagian gate
+   Fase 2; ini CSS bespoke baru milik komponen (diizinkan aturan 2 fase-2).
+   ==================================================================== */
+
+/* ════════════════════════════════════════════════════
+   KINETIC NAV — dual-layer hover slide
+════════════════════════════════════════════════════ */
+.kinetic-nav-link:hover .knav-primary     { transform: translateY(112%); }
+.kinetic-nav-link:hover .knav-clone        { transform: translateY(0%) !important; }
+.kinetic-nav-link:hover .knav-num-primary  { transform: translateY(-112%); }
+.kinetic-nav-link:hover .knav-num-clone    { transform: translateY(0%) !important; }
+.knav-primary, .knav-clone                 { transition: transform 0.44s cubic-bezier(0.16,1,0.28,1); }
+.knav-num-primary, .knav-num-clone         { transition: transform 0.38s cubic-bezier(0.20,1,0.32,1); }
+
+/* ── Active: ethereal glow pulse — no harsh borders ── */
+.kinetic-nav-active {
+    color: rgba(255,255,255,1);
+    text-shadow: 0 0 20px rgba(200,215,255,0.45);
+}
+.kinetic-nav-link:hover {
+    color: rgba(255,255,255,0.95) !important;
+}
+
+/* ════════════════════════════════════════════════════
+   LOGO WRAP — premium glow with fixed blur
+════════════════════════════════════════════════════ */
+/* The ubsc-logo-glow animation used to cycle filter: drop-shadow()
+   forever on the fixed bar — a full re-raster of the logo every
+   frame, for the whole session. The glow is now painted once.
+   A box-shadow on the wrapper was tried first and read as a
+   rectangle; drop-shadow follows the glyph silhouette. */
+.ubsc-logo {
+    filter: drop-shadow(0 0 7px rgba(180,200,255,0.42));
+}
+.ubsc-logo-wrap {
+    position: relative;
+    display: inline-flex;
+    overflow: visible;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.ubsc-logo-wrap:hover {
+    animation-play-state: paused;
+    filter: drop-shadow(0 0 14px rgba(255,255,255,0.60)) !important;
+    transform: scale(1.05);
+    transition: filter 0.3s ease, transform 0.3s ease;
+}
+.ubsc-logo { display: block; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; }
+
+/* ════════════════════════════════════════════════════
+   CTA CARD WRAP — clean premium button
+════════════════════════════════════════════════════ */
+.ubsc-cta-wrap {
+    position: relative;
+    border-radius: 12px;
+    overflow: visible;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.ubsc-cta-wrap::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.25);
+    background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+    pointer-events: none;
+}
+.ubsc-cta-wrap::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 14px;
+    box-shadow: 0 0 20px rgba(255,255,255,0.08);
+    pointer-events: none;
+}
+.ubsc-cta-wrap:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow:
+        0 8px 32px rgba(255,255,255,0.15),
+        0 16px 48px rgba(0,0,0,0.20) !important;
+}
+.ubsc-cta-wrap:hover::before {
+    border-color: rgba(255,255,255,0.40);
+}
+
+/* ════════════════════════════════════════════════════
+   PREMIUM SEAMLESS NAVBAR
+════════════════════════════════════════════════════ */
+.ubsc-navbar-premium {
+    isolation: isolate;
+    transform: translateZ(0);
+}
+.ubsc-navbar-premium::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.00) 0%, rgba(0,0,0,0.00) 100%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* ════════════════════════════════════════════════════
+   AUTH SECTION ISOLATION
+════════════════════════════════════════════════════ */
+.ubsc-auth-section {
+    isolation: isolate;
+    position: relative;
+    z-index: 101;
+    transform: translateZ(0);
+}
+
+/* Dropdown portal */
+.ubsc-dropdown-portal {
+    position: fixed;
+    z-index: 99999 !important;
+    isolation: isolate;
+}
+
+/* ════════════════════════════════════════════════════
+   CTA BUTTON INNER
+════════════════════════════════════════════════════ */
+.ubsc-cta-btn {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    border-radius: 8px;
+}
+
+/* ════════════════════════════════════════════════════
+   AVATAR — deep-navy gradient
+════════════════════════════════════════════════════ */
+.ubsc-avatar-bg {
+    background: linear-gradient(135deg,#0c1222 0%,#1b2a4a 50%,#08101e 100%);
+}
+
+/* ════════════════════════════════════════════════════
+   NAVBAR PREMIUM GRAIN — subtle surface texture
+════════════════════════════════════════════════════ */
+.ubsc-nav-grain::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.028;
+    pointer-events: none;
+    z-index: 1;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.90' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+    background-size: 256px 256px;
+}
+
+/* ════════════════════════════════════════════════════
+   LIQUID GLASS NAVBAR SURFACE — iOS 26 "kaca cair"
+   Real refraction: an SVG displacement map bends the
+   content behind the bar like a glass lens, topped with
+   a beveled edge catch-light and a soft specular drift.
+   Layered structure:
+     .ubsc-lg-effect  → blurred + displaced backdrop
+     .ubsc-lg-tint    → adaptive tint for text legibility
+     .ubsc-lg-shine   → beveled rim / specular highlights
+════════════════════════════════════════════════════ */
+.ubsc-liquid-glass {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    isolation: isolate;
+    box-shadow:
+        0 8px 30px rgba(0, 0, 0, 0.22),
+        0 1px 0 rgba(255, 255, 255, 0.10);
+}
+/* Refraction layer — frosted backdrop.
+   ponytail: the SVG feTurbulence/feDisplacementMap lens was dropped.
+   An SVG filter chained onto a backdrop-filtered, full-width fixed
+   element is software-rasterised every scrolled frame; a slightly
+   deeper GPU blur reads the same and costs ~nothing. */
+.ubsc-lg-effect {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    backdrop-filter: blur(10px) saturate(180%) brightness(1.05);
+    -webkit-backdrop-filter: blur(10px) saturate(180%) brightness(1.05);
+}
+/* Adaptive tint — keeps white nav text readable over any scene */
+.ubsc-lg-tint {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background:
+        linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.10) 0%,
+            rgba(255, 255, 255, 0.02) 30%,
+            rgba(255, 255, 255, 0.00) 60%
+        ),
+        linear-gradient(
+            to bottom,
+            rgba(8, 12, 28, 0.40) 0%,
+            rgba(8, 12, 28, 0.22) 55%,
+            rgba(8, 12, 28, 0.06) 86%,
+            rgba(8, 12, 28, 0.00) 100%
+        );
+}
+/* Beveled rim + specular highlights — the iOS glass edge */
+.ubsc-lg-shine {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.60),
+        inset 1px 0 0 rgba(255, 255, 255, 0.28),
+        inset -1px 0 0 rgba(255, 255, 255, 0.20),
+        inset 0 10px 22px rgba(255, 255, 255, 0.06),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.14),
+        inset 0 -16px 28px rgba(8, 12, 28, 0.20);
+}
+/* Soft specular glint drifting across the lens */
+.ubsc-lg-shine::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -40%;
+    width: 45%;
+    pointer-events: none;
+    /* ponytail: blur(6px) + mix-blend-mode:screen removed — both
+       re-rasterise this layer every frame of an infinite loop.
+       Softer gradient stops give the same glint for free. */
+    background: linear-gradient(
+        105deg,
+        transparent 0%,
+        rgba(255,255,255,0.03) 30%,
+        rgba(255,255,255,0.16) 50%,
+        rgba(255,255,255,0.03) 70%,
+        transparent 100%
+    );
+    transform: translateX(0) skewX(-12deg);
+    animation: ubsc-glass-sweep 9s cubic-bezier(0.45,0,0.2,1) infinite;
+    will-change: transform, opacity;
+}
+@keyframes ubsc-glass-sweep {
+    0%   { transform: translateX(0)    skewX(-12deg); opacity: 0; }
+    14%  { opacity: 0.85; }
+    45%  { opacity: 0.35; }
+    70%  { transform: translateX(360%) skewX(-12deg); opacity: 0; }
+    100% { transform: translateX(360%) skewX(-12deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ubsc-lg-shine::after {
+        animation: none;
+    }
+}

@@ -44,7 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: data.data.user.name,
           email: data.data.user.email,
           role: data.data.user.role,
-          permissions: Array.isArray(data.data.user.permissions) ? data.data.user.permissions : undefined
+          permissions: Array.isArray(data.data.user.permissions) ? data.data.user.permissions : undefined,
+          emailVerifiedAt: data.data.user.emailVerifiedAt
         })
       } catch {
         setAccessToken(null)

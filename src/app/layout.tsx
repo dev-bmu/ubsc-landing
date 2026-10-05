@@ -1,6 +1,5 @@
 import './globals.css'
 import type { Metadata } from 'next'
-import { Plus_Jakarta_Sans, Geist_Mono } from 'next/font/google'
 import { Providers } from './providers'
 import { runContractCheck } from '@/lib/contract-check'
 
@@ -11,26 +10,12 @@ import { runContractCheck } from '@/lib/contract-check'
 runContractCheck()
 
 // ===== Font =====
-// TODO Fase 2: font UBSC WAJIB dideklarasikan sebagai @font-face mentah di globals.css,
-// JANGAN next/font/local. next/font menghasilkan nama family ter-obfuscate (mis. __bdo_a1b2c3),
-// sementara 21 file men-hardcode font-family 'Clash Display' / 'BDO Grotesk' di CSS yang mereka
-// inject saat runtime. Deklarasi itu akan diam-diam berhenti cocok dan teksnya jatuh ke system
-// sans — regresi yang lolos review. Plus Jakarta di bawah hanya penyangga sementara boilerplate.
-const jakarta = Plus_Jakarta_Sans({
-  variable: '--font-sans',
-  subsets: ['latin']
-})
-
-const jakartaDisplay = Plus_Jakarta_Sans({
-  variable: '--font-display',
-  weight: ['600', '700', '800'],
-  subsets: ['latin']
-})
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin']
-})
+// Tidak ada next/font. Font UBSC (BDO Grotesk, Clash Display, Archivo Expanded) dideklarasikan
+// sebagai @font-face mentah di src/styles/ubsc-base.css dengan nama family aslinya: 21 file
+// men-hardcode font-family 'Clash Display' / 'BDO Grotesk' di CSS yang mereka inject saat runtime,
+// dan nama ter-obfuscate next/font (mis. __bdo_a1b2c3) akan diam-diam berhenti cocok.
+// Figtree dari fonts.bunny.net di app.blade.php Laravel SENGAJA tidak di-port: dimuat tetapi tidak
+// pernah dipakai (font-sans Laravel = BDO Grotesk), jadi hanya menambah satu request lintas domain.
 
 export const metadata: Metadata = {
   title: 'UBS Port Center',
@@ -55,7 +40,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   // yang tidak terpakai dan membalik basemap peta.
   return (
     <html lang="id">
-      <body className={`${jakarta.variable} ${jakartaDisplay.variable} ${geistMono.variable} font-sans antialiased`}>
+      {/* Sama persis dengan <body class="font-sans antialiased"> di app.blade.php Laravel. */}
+      <body className="font-sans antialiased">
         <Providers>{children}</Providers>
         {/* TODO Fase 4: FlashToast bespoke (pill #0d1422, bottom-center) dipasang di sini,
             plus pembacaan ?flash=<code> untuk redirect dari API. Sonner SENGAJA tidak dipakai
