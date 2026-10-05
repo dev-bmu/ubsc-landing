@@ -315,7 +315,10 @@ export function Navbar({ activeSection = 'Home', showInfoBanner = true, announce
           top: showInfoBanner ? 27 : 14,
           height: '100px',
           zIndex: 50,
-          transition: 'transform 0.45s cubic-bezier(0.65, 0, 0.35, 1)'
+          // Tailwind v4 menulis -translate-y-full / translate-y-0 sebagai properti `translate`, bukan
+          // `transform` seperti v3 (Laravel). Transisi 'transform' tidak pernah jalan: navbar melompat
+          // muncul/hilang tanpa meluncur, efek kaca menyala seketika (catatan client 2026-10-05).
+          transition: 'translate 0.45s cubic-bezier(0.65, 0, 0.35, 1)'
         }}
       >
         {/* Background overlay — stays inside wrapper, moves with navbar */}
