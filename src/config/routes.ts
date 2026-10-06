@@ -17,6 +17,8 @@
 // typedRoutes saling meniadakan: href literal gagal lint, href dari builder gagal build.
 // `Route` dari 'next' sengaja tidak dipakai di sini — tipe itu baru ada setelah `next build` menulis
 // .next/types, jadi `tsc --noEmit` di clone yang masih bersih akan gagal me-resolve-nya.
+import type { NewsSection } from '@/types/contracts/contracts'
+
 export const routes = {
   // ===== Halaman publik =====
   home: () => '/' as const,
@@ -24,6 +26,12 @@ export const routes = {
   pricing: () => '/pricing' as const,
   facilities: () => '/facilities' as const,
   news: () => '/news' as const,
+  // Detail artikel. Bagiannya ditentukan API lewat NewsDto.section (slug kategori 'artikel' -> /artikel,
+  // selain itu /berita) — komponen cukup memanggil newsArticle(item), jangan memilih dari nama kategori.
+  berita: (slug: string) => `/berita/${slug}` as const,
+  artikel: (slug: string) => `/artikel/${slug}` as const,
+  newsArticle: (item: { section: NewsSection; slug: string }) =>
+    item.section === 'artikel' ? (`/artikel/${item.slug}` as const) : (`/berita/${item.slug}` as const),
   branches: (slug: string) => `/branches/${slug}` as const,
   comingSoon: () => '/coming-soon' as const,
 

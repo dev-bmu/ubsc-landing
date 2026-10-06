@@ -57,9 +57,10 @@ function StatItem({ value, suffix, label }: { value: number; suffix: string; lab
 }
 
 function useResponsiveCurve(mobile: number, desktop: number): number {
-  const [curve, setCurve] = useState<number>(() => (typeof window !== 'undefined' && window.innerWidth < 1280 ? mobile : desktop))
+  const [curve, setCurve] = useState<number>(desktop)
   useEffect(() => {
     const update = () => setCurve(window.innerWidth < 1280 ? mobile : desktop)
+    update()
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
   }, [mobile, desktop])

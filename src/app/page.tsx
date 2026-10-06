@@ -1,4 +1,6 @@
+import { JsonLd } from '@/components/seo/JsonLd'
 import { HomePage } from '@/features/home/page/Index'
+import { buildPageMetadata, homeJsonLd } from '@/lib/seo'
 import type { Metadata } from 'next'
 
 // ===== Beranda publik =====
@@ -7,10 +9,9 @@ import type { Metadata } from 'next'
 // Halaman ini HARUS tetap 200 walau ubsc-api mati — HomePage menangani kegagalan fetch dan
 // komponen punya fallback statis sendiri.
 
-export const metadata: Metadata = {
-  title: 'UB Sport Center — Pusat Olahraga Universitas Brawijaya',
-  description:
-    'Sewa lapangan, ikuti kelas, dan kelola keanggotaan di UB Sport Center. Booking online untuk futsal, badminton, basket, kolam renang, dan fasilitas lainnya.'
+// Judul/deskripsi/OG bisa diatur admin (SEO halaman); default ada di SEO_PAGES (contracts/seo.ts).
+export function generateMetadata(): Promise<Metadata> {
+  return buildPageMetadata('home')
 }
 
 // ISR 300 detik, sesuai rencana cache per halaman di Rewrite.md ('/' 300s, '/news' 120s,
@@ -20,4 +21,12 @@ export const metadata: Metadata = {
 // jadi dinamis dan mematikan ISR tanpa satu pun error yang kelihatan.
 export const revalidate = 300
 
-export default HomePage
+// JSON-LD di luar <main> supaya pohon DOM HomePage (yang diukur gate fidelity) tidak berubah.
+export default function Page() {
+  return (
+    <>
+      <JsonLd data={homeJsonLd()} />
+      <HomePage />
+    </>
+  )
+}

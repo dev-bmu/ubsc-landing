@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 
 // Tujuan tautan "Forgot Password ?" di modal login.
 export const metadata: Metadata = {
-  title: 'Lupa Password | UB Sport Center',
+  title: 'Lupa Password',
   robots: { index: false, follow: false }
 }
 

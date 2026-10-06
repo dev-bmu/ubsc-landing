@@ -6,7 +6,7 @@ import type { Metadata } from 'next'
 // Judul & deskripsi disalin dari <Head> halaman itu (NotFound.tsx:80-85).
 
 export const metadata: Metadata = {
-  title: '404 | UB Sport Center',
+  title: '404',
   description: 'Halaman 404 UB Sport Center.'
 }
 

@@ -1,4 +1,5 @@
 import { BookingPage } from '@/features/booking/page/Index'
+import { buildPageMetadata } from '@/lib/seo'
 import type { Metadata } from 'next'
 
 // ===== /booking =====
@@ -6,9 +7,8 @@ import type { Metadata } from 'next'
 // dan seluruh alur pemesanan) diambil klien lewat TanStack Query dengan enabled:!!user. Pemisahan itulah
 // yang menjaga halaman ini tetap ISR 600s, bukan force-dynamic (Rewrite.md).
 
-export const metadata: Metadata = {
-  title: 'Booking | UB Sport Center',
-  description: 'Booking fasilitas olahraga terbaik di UB Sport Center Malang — gym, lapangan futsal, yoga, dan banyak lagi.'
+export function generateMetadata(): Promise<Metadata> {
+  return buildPageMetadata('booking')
 }
 
 export const revalidate = 600

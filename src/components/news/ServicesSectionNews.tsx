@@ -7,7 +7,9 @@ import { CurvedLoop } from '@/components/landing/CurvedLoop'
 import { NewsCard, type NewsItem } from '@/components/landing/NewsCard'
 import { SectionDivider } from '@/components/landing/SectionDivider'
 import { mediaUrl } from '@/config/media'
+import { routes } from '@/config/routes'
 import { ArrowRight } from 'lucide-react'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
 // ─────────────────────────────────────────────
@@ -22,8 +24,8 @@ import { useEffect, useState } from 'react'
 //   - `"/assets/reels/tennis vid.mp4"` -> `"/assets/reels/tennis-vid.mp4"`: berkas video di luar git
 //     dan dilayani rewrite /assets/reels/* -> API /media; nama di ops/media-manifest.txt sudah
 //     kebab-case (reels/tennis-vid.mp4), sama seperti reels-ubsc-N.mp4 di ReelsSection yang sudah diport.
-//   - 2x `href="#"` dipertahankan verbatim dengan eslint-disable no-restricted-syntax ('#' bukan URL
-//     halaman, tidak ada builder routes.* untuknya).
+//   - 2x `href="#"` Laravel diganti tautan ke berita unggulan (routes.newsArticle), atau /news bila dummy.
+//   - Kartu kedua dilewati bila hanya ada satu berita (dulu dirender sebagai kartu kosong).
 //   - 6 classPairs v3->v4 (spec-ServicesSectionNews.json): 2x flex-shrink-0->shrink-0,
 //     aspect-[413/529]->aspect-413/529, aspect-[857/529]->aspect-857/529, koreksi R2 +xl:leading-6
 //     pada judul kartu "Unggulan Kami", dan penghapusan deadToken R1 `z-100` pada CurvedLoop.
@@ -43,15 +45,16 @@ const DUMMY_NEWS: DummyNewsItem[] = Array.from({ length: 6 }, (_, idx) => ({
 }))
 
 const SECTION_CONTAINER_CLASS = 'mx-auto px-6 py-8 sm:px-10 sm:py-12 xl:px-[clamp(70px,4.53vw,87px)]'
-const CARD_FEATURED_CLASS = 'w-full aspect-857/529 md:col-span-2 xl:col-span-2'
+const CARD_FEATURED_CLASS = 'w-full md:aspect-857/529 md:col-span-2 xl:col-span-2'
 const CARD_STANDARD_CLASS = 'w-full aspect-413/529'
 const CARD_GRID_CLASS = 'grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-[clamp(24px,1.56vw,30px)]'
 
 function useResponsiveCurve(mobile: number, desktop: number): number {
-  const [curve, setCurve] = useState<number>(() => (typeof window !== 'undefined' && window.innerWidth < 1280 ? mobile : desktop))
+  const [curve, setCurve] = useState<number>(desktop)
 
   useEffect(() => {
     const update = () => setCurve(window.innerWidth < 1280 ? mobile : desktop)
+    update()
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
   }, [mobile, desktop])
@@ -63,6 +66,8 @@ export function ServicesSectionNews({ news }: { news?: DummyNewsItem[] }) {
   const curveAmount = useResponsiveCurve(120, 200)
   const activeNews = news && news.length > 0 ? news : DUMMY_NEWS
   const [featured, standard, ...bottom4] = activeNews
+  // "Lihat Selengkapnya" membuka berita unggulan; data dummy (tanpa slug) kembali ke /news.
+  const moreHref = featured.slug && featured.section ? routes.newsArticle({ slug: featured.slug, section: featured.section }) : routes.news()
 
   const unggulanBg = {
     background: 'linear-gradient(266deg, #15678d 3%, #173859 61%, #002244 97%)'
@@ -97,15 +102,13 @@ export function ServicesSectionNews({ news }: { news?: DummyNewsItem[] }) {
               Berita Terkini Kami
             </h2>
           </div>
-          {/* eslint-disable no-restricted-syntax -- '#' bukan URL halaman (tidak ada builder routes.* untuknya); dipertahankan verbatim dari Laravel */}
-          <a
-            href="#"
+          <Link
+            href={moreHref}
             className="hidden items-center gap-2 font-bdo text-[clamp(1rem,1.25vw,1.5rem)] font-normal text-[#ff0000] transition-all duration-300 hover:gap-3 xl:flex xl:shrink-0"
           >
             Lihat Selengkapnya
             <ArrowRight size={18} />
-          </a>
-          {/* eslint-enable no-restricted-syntax */}
+          </Link>
         </div>
 
         <div className={`${CARD_GRID_CLASS} pb-12`}>
@@ -120,15 +123,16 @@ export function ServicesSectionNews({ news }: { news?: DummyNewsItem[] }) {
           />
 
           <div className="flex justify-end md:hidden">
-            {/* eslint-disable no-restricted-syntax -- '#' bukan URL halaman (tidak ada builder routes.* untuknya); dipertahankan verbatim dari Laravel */}
-            <a href="#" className="flex items-center gap-2 font-bdo text-sm font-normal text-[#ff0000] transition-all duration-300 hover:gap-3">
+            <Link
+              href={moreHref}
+              className="flex items-center gap-2 font-bdo text-sm font-normal text-[#ff0000] transition-all duration-300 hover:gap-3"
+            >
               Lihat Selengkapnya
               <ArrowRight size={16} />
-            </a>
-            {/* eslint-enable no-restricted-syntax */}
+            </Link>
           </div>
 
-          <NewsCard {...standard} index={1} layoutOverride="berita" className={CARD_STANDARD_CLASS} variant="news-page" />
+          {standard && <NewsCard {...standard} index={1} layoutOverride="berita" className={CARD_STANDARD_CLASS} variant="news-page" />}
 
           <div className="hidden md:block">{unggulanCard}</div>
 

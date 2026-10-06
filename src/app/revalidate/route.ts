@@ -8,7 +8,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 // produksi nginx meneruskan /api/* ke ubsc-api, jadi API memanggil port Next ini langsung
 // (LANDING_REVALIDATE_URL). Rahasia bersama di header x-revalidate-secret.
 
-const ALLOWED_TAGS = new Set(['home', 'facilities', 'booking-facilities', 'membership-plans', 'news', 'booking-reviews'])
+const ALLOWED_TAGS = new Set(['home', 'facilities', 'booking-facilities', 'membership-plans', 'news', 'booking-reviews', 'seo'])
 
 function secretMatches(given: string | null): boolean {
   const expected = process.env.REVALIDATE_SECRET

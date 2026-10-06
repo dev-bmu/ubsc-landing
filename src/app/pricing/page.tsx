@@ -1,9 +1,9 @@
 import { PricingPage } from '@/features/pricing/page/Index'
+import { buildPageMetadata } from '@/lib/seo'
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = {
-  title: 'Harga & Membership — UB Sport Center',
-  description: 'Daftar harga sewa fasilitas, kelas, dan paket membership UB Sport Center.'
+export function generateMetadata(): Promise<Metadata> {
+  return buildPageMetadata('pricing')
 }
 
 // ISR 600s sesuai rencana cache Rewrite.md ('/pricing' + '/facilities' + '/booking').

@@ -7,7 +7,9 @@ import type {
   FacilityDto,
   HomeDto,
   MembershipPlanDto,
-  NewsDto
+  NewsDetailDto,
+  NewsDto,
+  PageSeoDto
 } from '@/types/contracts/contracts'
 
 // ===== Fetch data publik dari sisi server (RSC) =====
@@ -33,7 +35,7 @@ function apiBaseUrl(): string {
  */
 export async function getHome(options?: { revalidate?: number; tags?: string[] }): Promise<HomeDto> {
   const res = await fetch(`${apiBaseUrl()}/api/public/home`, {
-    headers: { accept: 'application/json' },
+    headers: { accept: 'application/json', 'x-landing-secret': process.env.REVALIDATE_SECRET ?? '' },
     next: {
       revalidate: options?.revalidate ?? 300,
       tags: options?.tags ?? ['home']
@@ -61,7 +63,7 @@ export async function getHome(options?: { revalidate?: number; tags?: string[] }
 
 async function getPublic<T>(path: string, tag: string, revalidate: number): Promise<T> {
   const res = await fetch(`${apiBaseUrl()}/api/public/${path}`, {
-    headers: { accept: 'application/json' },
+    headers: { accept: 'application/json', 'x-landing-secret': process.env.REVALIDATE_SECRET ?? '' },
     next: { revalidate, tags: [tag] }
   })
 
@@ -90,6 +92,38 @@ export function getFacilities(revalidate = 600): Promise<FacilityDto[]> {
  */
 export function getNews(revalidate = 120): Promise<NewsDto[]> {
   return getPublic<NewsDto[]>('news', 'news', revalidate)
+}
+
+/**
+ * Detail artikel terbit — /berita/[slug] dan /artikel/[slug]. ISR 300s, tag 'news' (dibuang API setiap tulis berita).
+ * 404 (tidak ada / belum terbit) -> null supaya halaman memanggil notFound(); kegagalan lain DILEMPAR seperti getPublic.
+ */
+export async function getNewsDetail(slug: string): Promise<NewsDetailDto | null> {
+  const res = await fetch(`${apiBaseUrl()}/api/public/news/${encodeURIComponent(slug)}`, {
+    headers: { accept: 'application/json', 'x-landing-secret': process.env.REVALIDATE_SECRET ?? '' },
+    next: { revalidate: 300, tags: ['news'] }
+  })
+
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`getNewsDetail: API mengembalikan ${res.status}`)
+
+  const body = (await res.json()) as ApiSuccess<NewsDetailDto>
+  if (!body.success) throw new Error('getNewsDetail: envelope tidak success')
+
+  return body.data
+}
+
+/**
+ * Timpaan SEO halaman statis dari admin (hanya baris yang tersimpan; sisanya default SEO_PAGES). ISR 600s, tag 'seo'.
+ * BERBEDA dari koleksi lain: kegagalan apa pun -> [] alih-alih dilempar. Dipanggil generateMetadata/sitemap
+ * di hampir semua halaman — API mati tidak boleh menjatuhkan halaman, cukup kembali ke default kode.
+ */
+export async function getPageSeo(): Promise<PageSeoDto[]> {
+  try {
+    return await getPublic<PageSeoDto[]>('seo', 'seo', 600)
+  } catch {
+    return []
+  }
 }
 
 /** Fasilitas + unit untuk halaman /booking. ISR 600s. */

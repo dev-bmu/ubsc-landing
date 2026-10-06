@@ -43,6 +43,18 @@ export interface NewsSlide {
   description: string
   date: string
   image: string
+  /** URL artikel (data API). Slide dummy tanpa href tetap memakai CTA bawaan AnimatedBookingLink. */
+  href?: string
+}
+
+// Satu <h1> per halaman: hanya judul slide pertama; slide lain <h2> dengan tampilan yang sama.
+function SlideTitle({ first, children }: { first: boolean; children: string }) {
+  const Tag = first ? 'h1' : 'h2'
+  return (
+    <Tag className="max-w-[656px] font-bdo text-xl leading-snug font-medium text-white md:text-2xl md:leading-8 xl:text-[clamp(1.125rem,1.46vw,28px)]">
+      {children}
+    </Tag>
+  )
 }
 
 const DUMMY_NEWS_SLIDES: NewsSlide[] = [
@@ -107,16 +119,14 @@ export function NewsHero({ slides }: { slides?: NewsSlide[] }) {
                     >
                       <span className="font-clash text-[clamp(0.875rem,0.83vw,16px)] font-bold text-white">{slide.badge}</span>
                     </div>
-                    <h1 className="max-w-[656px] font-bdo text-xl leading-snug font-medium text-white md:text-2xl md:leading-8 xl:text-[clamp(1.125rem,1.46vw,28px)]">
-                      {slide.title}
-                    </h1>
+                    <SlideTitle first={idx === 0}>{slide.title}</SlideTitle>
                     <p className="max-w-[643px] font-bdo text-[clamp(1rem,1.25vw,24px)] font-normal text-white/70">{slide.description}</p>
                   </div>
 
                   {/* Date + link — stacked on mobile, end-aligned on desktop */}
                   <div className="flex w-full flex-col justify-end gap-3 xl:col-span-4 xl:w-auto xl:items-end">
                     <span className="font-bdo text-[clamp(1rem,1.04vw,20px)] font-normal text-white/80">{slide.date}</span>
-                    <AnimatedBookingLink />
+                    {slide.href ? <AnimatedBookingLink href={slide.href} label="Baca Selengkapnya" /> : <AnimatedBookingLink />}
                   </div>
                 </div>
               </div>

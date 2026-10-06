@@ -1,3 +1,8 @@
+import Link from 'next/link'
+import type { ReactNode } from 'react'
+import { routes } from '@/config/routes'
+import type { NewsSection } from '@/types/contracts/contracts'
+
 export interface NewsItem {
   id: string | number
   title: string
@@ -5,6 +10,27 @@ export interface NewsItem {
   category: string
   image: string
   description?: string | null
+  /** Ada pada data API (NewsDto); kartu dummy tanpa slug dirender sebagai kartu biasa, bukan tautan. */
+  slug?: string
+  section?: NewsSection
+}
+
+const FALLBACK_IMAGE = '/assets/images/comingsoon.avif'
+
+// Stretched link: ::after menutup seluruh kartu (article relative), jadi seluruh kartu bisa diklik sementara
+// elemen interaktifnya tetap SATU — judul, yang sekaligus menjadi nama aksesibel tautan.
+// draggable={false}: seret di carousel Embla tidak boleh memulai drag-n-drop tautan bawaan browser.
+function CardTitleLink({ href, children }: { href: ReturnType<typeof routes.newsArticle> | null; children: ReactNode }) {
+  if (!href) return children
+  return (
+    <Link
+      href={href}
+      draggable={false}
+      className="after:absolute after:inset-0 after:z-10 focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-accent-red focus-visible:after:ring-inset"
+    >
+      {children}
+    </Link>
+  )
 }
 
 interface NewsCardProps extends NewsItem {
@@ -20,8 +46,10 @@ export function NewsCard({
   title,
   date,
   category,
-  image,
+  image: rawImage,
   description,
+  slug,
+  section,
   index,
   layoutOverride,
   className,
@@ -30,6 +58,8 @@ export function NewsCard({
   featured = false
 }: NewsCardProps) {
   const isImageTop = layoutOverride === 'berita' ? true : layoutOverride === 'artikel' ? false : index % 2 === 0
+  const image = rawImage || FALLBACK_IMAGE
+  const href = slug && section ? routes.newsArticle({ slug, section }) : null
 
   if (variant === 'news-page') {
     const outerClass = className ?? (featured ? 'w-full aspect-857/529' : 'w-full aspect-413/529')
@@ -37,11 +67,12 @@ export function NewsCard({
     const padClass = featured
       ? 'px-[clamp(1rem,1.1vw,1.3125rem)] py-[clamp(1.125rem,1.45vw,1.875rem)]'
       : 'px-[clamp(1rem,1.1vw,1.3125rem)] py-[clamp(1rem,1.45vw,1.75rem)]'
-    const badgeTone = category === 'Artikel' ? 'linear-gradient(to right, #15678d, #153359)' : 'linear-gradient(to right, #790a0a, #FF0000)'
+    const isArtikel = section ? section === 'artikel' : category === 'Artikel'
+    const badgeTone = isArtikel ? 'linear-gradient(to right, #15678d, #153359)' : 'linear-gradient(to right, #790a0a, #FF0000)'
     const descriptionTone = isImageTop ? 'text-black/70' : 'text-white/70'
 
     const imageNode = (
-      <div className={`relative w-full shrink-0 overflow-hidden ${imageClass}`}>
+      <div className={`relative w-full ${isImageTop ? 'shrink-0' : 'min-h-0'} overflow-hidden ${imageClass}`}>
         {/* eslint-disable-next-line @next/next/no-img-element -- gambar berita dari NewsDto.image (media CMS); butuh elemen polos, bukan next/image */}
         <img
           src={image}
@@ -59,13 +90,17 @@ export function NewsCard({
       </div>
     )
 
-    const titleNode = <p className="line-clamp-2 font-bdo text-lg leading-snug font-medium text-current xl:text-xl xl:leading-7">{title}</p>
+    const titleNode = (
+      <h3 className="line-clamp-2 font-bdo text-lg leading-snug font-medium text-current xl:text-xl xl:leading-7">
+        <CardTitleLink href={href}>{title}</CardTitleLink>
+      </h3>
+    )
     const descNode = description && (
       <p className={`mt-2 line-clamp-3 font-bdo text-sm leading-relaxed font-normal xl:text-base xl:leading-6 ${descriptionTone}`}>{description}</p>
     )
 
     return (
-      <article className={`group flex min-h-0 cursor-pointer flex-col overflow-hidden border border-black/5 ${outerClass}`}>
+      <article className={`group relative flex min-h-0 cursor-pointer flex-col overflow-hidden border border-black/5 ${outerClass}`}>
         {isImageTop ? (
           <>
             {imageNode}
@@ -81,7 +116,7 @@ export function NewsCard({
           </>
         ) : (
           <>
-            <div className={`flex min-h-0 flex-1 flex-col bg-black text-white ${padClass}`}>
+            <div className={`flex flex-1 flex-col bg-black text-white ${padClass}`}>
               <div className="flex h-10 items-start">
                 <span className="font-bdo text-base font-normal text-white/70 xl:text-lg">{date}</span>
               </div>
@@ -108,7 +143,7 @@ export function NewsCard({
   const padClass = compact ? 'p-3 xl:p-6' : 'p-6'
 
   return (
-    <article className={`group flex cursor-pointer flex-col overflow-hidden border border-white/10 ${outerClass}`}>
+    <article className={`group relative flex cursor-pointer flex-col overflow-hidden border border-white/10 ${outerClass}`}>
       {isImageTop ? (
         <>
           <div className="relative flex-[0_0_44%] overflow-hidden">
@@ -130,7 +165,9 @@ export function NewsCard({
 
           <div className={`flex flex-1 flex-col justify-between bg-white ${padClass}`}>
             <div className="flex flex-col gap-1">
-              <p className={`line-clamp-3 font-bdo leading-snug font-medium text-black ${titleClass}`}>{title}</p>
+              <h3 className={`line-clamp-3 font-bdo leading-snug font-medium text-black ${titleClass}`}>
+                <CardTitleLink href={href}>{title}</CardTitleLink>
+              </h3>
               {description && <p className={`mt-1 line-clamp-3 font-bdo font-normal text-black/70 ${descClass}`}>{description}</p>}
             </div>
             <span className={`font-bdo font-normal text-black/70 ${dateClass}`}>{date}</span>
@@ -142,7 +179,9 @@ export function NewsCard({
             <span className={`font-bdo font-normal text-white/70 ${dateClass}`}>{date}</span>
             <div className="flex flex-col gap-1">
               {description && <p className={`mt-1 line-clamp-3 font-bdo font-normal text-white/70 ${descClass}`}>{description}</p>}
-              <p className={`mt-2 line-clamp-3 font-bdo leading-snug font-medium text-white ${titleClass}`}>{title}</p>
+              <h3 className={`mt-2 line-clamp-3 font-bdo leading-snug font-medium text-white ${titleClass}`}>
+                <CardTitleLink href={href}>{title}</CardTitleLink>
+              </h3>
             </div>
           </div>
 

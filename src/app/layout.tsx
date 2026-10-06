@@ -2,6 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 import { Providers } from './providers'
 import { runContractCheck } from '@/lib/contract-check'
+import { SITE_NAME, SITE_URL } from '@/config/site'
 
 // ===== Pemeriksaan kontrak (dev saja) =====
 // Dipanggil di lingkup modul, bukan di dalam komponen: jalan sekali per proses server,
@@ -17,15 +18,23 @@ runContractCheck()
 // Figtree dari fonts.bunny.net di app.blade.php Laravel SENGAJA tidak di-port: dimuat tetapi tidak
 // pernah dipakai (font-sans Laravel = BDO Grotesk), jadi hanya menambah satu request lintas domain.
 
+// ===== Metadata dasar =====
+// Halaman menulis judul TANPA merek; template di bawah yang menambahkannya. metadataBase membuat
+// canonical/OpenGraph relatif jadi absolut. Ikon lewat konvensi berkas (app/icon.png, apple-icon.png).
+// Per halaman: src/lib/seo.ts (buildPageMetadata/buildArticleMetadata) — SEO halaman statis bisa diatur admin.
 export const metadata: Metadata = {
-  title: 'UB Sport Center',
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
   description: 'Pusat olahraga Universitas Brawijaya — booking lapangan, kelas, dan keanggotaan.',
+  applicationName: SITE_NAME,
+  openGraph: { type: 'website', locale: 'id_ID', siteName: SITE_NAME },
+  twitter: { card: 'summary_large_image' },
   robots: {
-    // Situs publik: boleh diindeks. TODO Fase 5: src/app/robots.ts masih warisan
-    // boilerplate (Disallow: /) dan harus diperbaiki bersama sitemap.
     index: true,
-    follow: true
-  }
+    follow: true,
+    googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 }
+  },
+  formatDetection: { telephone: false }
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

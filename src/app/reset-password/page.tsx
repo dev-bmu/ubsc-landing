@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 
 // Tujuan tautan email lupa password (resetUrl di ubsc-api). Dinamis: token datang lewat query.
 export const metadata: Metadata = {
-  title: 'Reset Password | UB Sport Center',
+  title: 'Reset Password',
   robots: { index: false, follow: false }
 }
 

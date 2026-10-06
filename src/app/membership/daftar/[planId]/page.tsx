@@ -3,7 +3,8 @@ import type { Metadata } from 'next'
 
 // Per-user (harga menurut identitas, status foto): tanpa cache sama sekali.
 export const metadata: Metadata = {
-  title: 'Daftar Membership | UB Sport Center'
+  title: 'Daftar Membership',
+  robots: { index: false, follow: false }
 }
 
 export default async function Page({ params }: { params: Promise<{ planId: string }> }) {

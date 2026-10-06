@@ -4,22 +4,24 @@ import { Navbar } from '@/components/landing/Navbar'
 import { NewsHero, type NewsSlide } from '@/components/news/NewsHero'
 import { ServicesSectionArtikel } from '@/components/news/ServicesSectionArtikel'
 import { ServicesSectionNews } from '@/components/news/ServicesSectionNews'
+import { routes } from '@/config/routes'
 import { getNews } from '@/services/server'
 import type { NewsDto } from '@/types/contracts/contracts'
 
 // ===== Komposisi halaman /news (Server Component) =====
-// Padanan PublicNewsController@index + Pages/NewsPage.tsx Laravel. Pohon DOM-nya persis
-// NewsPage.tsx:60-71, tanpa satu wrapper pun ditambah atau dikurangi:
+// Padanan PublicNewsController@index + Pages/NewsPage.tsx Laravel (NewsPage.tsx:60-71):
 //
 //   <main class="relative">
 //     <Navbar activeSection="News"/>
 //     <NewsHero slides={...}/>
-//     <div id="news-content"/>        <- id-nya memang kembar dengan <section id="news-content">
-//     <ServicesSectionNews news={beritaItems}/>    milik ServicesSectionNews; itu apa adanya di
-//     <ServicesSectionArtikel articles={artikelItems}/>  Laravel dan sengaja TIDAK "diperbaiki".
+//     <ServicesSectionNews news={beritaItems}/>    <- <section id="news-content">, target HeroBottomBar
+//     <ServicesSectionArtikel articles={artikelItems}/>
 //     <AboutSectionContact sectionNumber="03" .../>
 //   </main>
 //   <Footer/>   (DI LUAR <main>)
+//
+// <div id="news-content"/> warisan Laravel DIHAPUS: id-nya kembar dengan section di bawahnya, dan
+// getElementById tetap mendarat di posisi yang sama (section itu persis setelahnya).
 //
 // Catatan port:
 //   - <Head> Inertia DIHAPUS — metadata sudah ada di src/app/news/page.tsx.
@@ -46,19 +48,20 @@ export async function NewsPage() {
     title: item.title,
     description: item.description ?? '',
     date: item.date,
-    image: item.image || '/assets/images/comingsoon.avif'
+    image: item.image || '/assets/images/comingsoon.avif',
+    href: routes.newsArticle(item)
   }))
 
-  // Cast is safe — API only returns "Berita" or "Artikel" for category
-  const beritaItems = news.filter((n) => n.category === 'Berita') as never[]
-  const artikelItems = news.filter((n) => n.category === 'Artikel') as never[]
+  // Dipilah menurut section dari API (slug kategori), bukan nama kategori — kategori selain
+  // Berita/Artikel ikut ke section 'berita', sama dengan URL-nya (/berita/<slug>).
+  const beritaItems = news.filter((n) => n.section === 'berita') as never[]
+  const artikelItems = news.filter((n) => n.section === 'artikel') as never[]
 
   return (
     <>
       <main className="relative">
         <Navbar activeSection="News" />
         <NewsHero slides={heroSlides.length > 0 ? heroSlides : undefined} />
-        <div id="news-content" />
         <ServicesSectionNews news={beritaItems} />
         <ServicesSectionArtikel articles={artikelItems} />
         <AboutSectionContact sectionNumber="03" sectionTitle="Informasi" sectionSubtitle="03 news page" />

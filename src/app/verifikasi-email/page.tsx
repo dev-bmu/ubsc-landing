@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 
 // Tujuan tautan email verifikasi (verifyUrl di ubsc-api). Dinamis: token datang lewat query.
 export const metadata: Metadata = {
-  title: 'Verifikasi Email | UB Sport Center',
+  title: 'Verifikasi Email',
   robots: { index: false, follow: false }
 }
 

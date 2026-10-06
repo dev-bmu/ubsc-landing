@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNearViewport } from '@/hooks/useNearViewport'
 import { mediaUrl } from '@/config/media'
 import { routes } from '@/config/routes'
+import { SOCIAL_URLS } from '@/config/site'
 import ig from '@/assets/icons/ig.svg'
 import x from '@/assets/icons/x.svg'
 import tiktok from '@/assets/icons/tiktok.svg'
@@ -21,23 +22,12 @@ const NAV_LINKS = [
   { label: 'Booking', number: '06', href: routes.booking() }
 ]
 
+// URL-nya tinggal di config/site.ts, dipakai juga sameAs JSON-LD.
 const SOCIAL_LINKS = [
-  {
-    label: 'Instagram',
-    href: 'https://www.instagram.com/ubsportcenter/',
-    icon: ig
-  },
-  { label: 'Twitter/X', href: 'https://x.com/ubsportcenter', icon: x },
-  {
-    label: 'Tiktok',
-    href: 'https://www.tiktok.com/@ubsportcenter',
-    icon: tiktok
-  },
-  {
-    label: 'Facebook',
-    href: 'https://www.facebook.com/sportcenterub/',
-    icon: facebook
-  }
+  { label: 'Instagram', href: SOCIAL_URLS.instagram, icon: ig },
+  { label: 'Twitter/X', href: SOCIAL_URLS.x, icon: x },
+  { label: 'Tiktok', href: SOCIAL_URLS.tiktok, icon: tiktok },
+  { label: 'Facebook', href: SOCIAL_URLS.facebook, icon: facebook }
 ]
 
 export function Footer() {

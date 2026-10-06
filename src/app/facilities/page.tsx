@@ -1,9 +1,9 @@
 import { FacilityPage } from '@/features/facilities/page/Index'
+import { buildPageMetadata } from '@/lib/seo'
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = {
-  title: 'Fasilitas — UB Sport Center',
-  description: 'Lapangan, arena, kelas, dan fasilitas outdoor yang tersedia di UB Sport Center Malang.'
+export function generateMetadata(): Promise<Metadata> {
+  return buildPageMetadata('facilities')
 }
 
 export const revalidate = 600

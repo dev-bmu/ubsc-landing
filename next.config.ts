@@ -52,6 +52,14 @@ const nextConfig: NextConfig = {
     ]
   },
 
+  // /berita dan /artikel hanya awalan URL detail (/berita/<slug>, /artikel/<slug>); daftar keduanya ada di /news.
+  async redirects() {
+    return [
+      { source: '/berita', destination: '/news', permanent: true },
+      { source: '/artikel', destination: '/news', permanent: true }
+    ]
+  },
+
   // Alias webpack `canvas: false` dan `encoding: false` dari boilerplate DIHAPUS: stub itu hanya dibutuhkan
   // pdfjs-dist dan node-fetch, dan landing tidak memakai keduanya. Menyisakan blok `webpack` juga akan
   // memunculkan peringatan "Webpack is configured while Turbopack is not" setiap `next dev --turbopack`.

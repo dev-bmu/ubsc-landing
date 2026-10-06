@@ -110,7 +110,7 @@ export function NewsSection({ news }: NewsSectionProps) {
 
       <div className="mx-auto mt-12 mb-12 hidden grid-cols-[minmax(250px,1fr)_minmax(430px,1.35fr)_minmax(150px,.72fr)] items-end gap-8 px-[clamp(1.5rem,4.5vw,5.5rem)] xl:mt-[112px] xl:mb-[96px] xl:grid">
         <div className="max-w-[520px]">
-          <ReservasiButton href={routes.comingSoon()} label="Lihat Berita Lainnya" />
+          <ReservasiButton href={routes.news()} label="Lihat Berita Lainnya" />
         </div>
         <p className="max-w-[640px] justify-self-center font-bdo text-[clamp(1.25rem,1.55vw,1.875rem)] leading-[1.28] font-light tracking-tight text-black">
           Komitmen kami adalah menghadirkan{' '}
@@ -133,7 +133,7 @@ export function NewsSection({ news }: NewsSectionProps) {
         </p>
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <ReservasiButton href={routes.comingSoon()} label="Lihat Berita Lainnya" />
+            <ReservasiButton href={routes.news()} label="Lihat Berita Lainnya" />
           </div>
           <NewsNavButtons onPrevious={scrollPrev} onNext={scrollNext} />
         </div>

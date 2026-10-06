@@ -1,9 +1,9 @@
 import { NewsPage } from '@/features/news/page/Index'
+import { buildPageMetadata } from '@/lib/seo'
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = {
-  title: 'Berita & Artikel — UB Sport Center',
-  description: 'Kabar terbaru, program, dan artikel seputar UB Sport Center.'
+export function generateMetadata(): Promise<Metadata> {
+  return buildPageMetadata('news')
 }
 
 // ISR 120s — paling sering berubah di antara halaman publik (Rewrite.md).
