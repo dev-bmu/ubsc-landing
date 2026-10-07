@@ -4,6 +4,7 @@ import { ScrollTextReveal } from '@/components/landing/ScrollTextReveal'
 import { SectionDivider } from '@/components/landing/SectionDivider'
 import { AnimatedBookingLink } from '@/components/news/AnimatedBookingLink'
 import { type ClassPricing, PricingClassCard } from '@/components/pricing/PricingClassCard'
+import { MEMBERSHIP_ENABLED } from '@/config/features'
 import { routes } from '@/config/routes'
 import type { FacilityDto } from '@/types/contracts/contracts'
 import useEmblaCarousel from 'embla-carousel-react'
@@ -91,7 +92,7 @@ export function PricingClassSection({ facilities = [] }: Props) {
             <div className="flex items-center gap-4">
               <span className="section-label-diamond" />
               <ScrollTextReveal className="font-bdo text-[clamp(1.16rem,1.32vw,1.45rem)] font-medium tracking-tight text-white">
-                Gabung Member Sekarang
+                {MEMBERSHIP_ENABLED ? 'Gabung Member Sekarang' : 'Daftar Harga'}
               </ScrollTextReveal>
             </div>
             <ScrollTextReveal as="h2" split="block" delay={80} className={`${DARK_HEADING_CLASS} max-w-[60rem]`}>

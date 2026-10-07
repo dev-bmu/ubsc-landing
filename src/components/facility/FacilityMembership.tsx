@@ -5,6 +5,7 @@ import { LogoMarquee } from '@/components/landing/LogoMarquee'
 import { ReservasiButton } from '@/components/landing/ReservasiButton'
 import { ScrollTextReveal } from '@/components/landing/ScrollTextReveal'
 import { SectionDivider } from '@/components/landing/SectionDivider'
+import { MEMBERSHIP_ENABLED } from '@/config/features'
 
 // ─────────────────────────────────────────────
 // Port 1:1 dari resources/js/Components/Facility/FacilityMembership.tsx.
@@ -40,77 +41,82 @@ export function FacilityMembership() {
       </div>
 
       <div className={`${SECTION_CONTAINER_CLASS} pb-16 xl:pb-20`}>
-        <div className="flex flex-col gap-6 xl:hidden">
-          <div className="flex items-center gap-4">
-            <span className="section-label-diamond" />
-            <ScrollTextReveal className="font-bdo text-[clamp(1.16rem,1.32vw,1.45rem)] font-medium tracking-tight">
-              Program Membership
-            </ScrollTextReveal>
-          </div>
+        {/* Blok penjualan membership ikut saklar NEXT_PUBLIC_MEMBERSHIP_ENABLED; logo sponsor & banner tetap tampil. */}
+        {MEMBERSHIP_ENABLED && (
+          <>
+            <div className="flex flex-col gap-6 xl:hidden">
+              <div className="flex items-center gap-4">
+                <span className="section-label-diamond" />
+                <ScrollTextReveal className="font-bdo text-[clamp(1.16rem,1.32vw,1.45rem)] font-medium tracking-tight">
+                  Program Membership
+                </ScrollTextReveal>
+              </div>
 
-          <ScrollTextReveal as="h2" split="block" delay={80} className={SECTION_HEADING_CLASS}>
-            Bergabunglah dengan komunitas olahraga terbaik dan capai target Anda. Kami sedia program terstruktur - semua di satu tempat.
-          </ScrollTextReveal>
-
-          <div className="aspect-480/216 w-full overflow-hidden rounded-[5px] bg-gray-100">
-            {/* eslint-disable-next-line @next/next/no-img-element -- aset desain statis dari public/assets/images, bukan gambar CMS /uploads */}
-            <img
-              src="/assets/images/gym-konten-2-olahraga-ub-sport-center.avif"
-              alt="UB Sport Center membership"
-              className="h-full w-full object-cover"
-            />
-          </div>
-
-          <ScrollTextReveal as="p" split="words" delay={150} className={BODY_TEXT_CLASS}>
-            Daftarkan diri Anda sekarang dan rasakan pengalaman berolahraga yang sesungguhnya. Pilih paket membership yang sesuai dengan kebutuhan dan
-            jadwal Anda di UB Sport Center.
-          </ScrollTextReveal>
-
-          {/* eslint-disable-next-line no-restricted-syntax -- '#' bukan URL halaman (tidak ada builder routes.* untuknya); dipertahankan verbatim dari Laravel */}
-          <ReservasiButton label="Daftar Sekarang" href="#" />
-        </div>
-
-        <div className="hidden xl:grid xl:grid-cols-[minmax(28rem,30rem)_minmax(0,1fr)] xl:gap-x-[clamp(5rem,6.25vw,7.5rem)]">
-          <div className="flex flex-col gap-[9.4rem]">
-            <div className="flex items-center gap-4">
-              <span className="section-label-diamond" />
-              <ScrollTextReveal className="font-bdo text-[clamp(1.16rem,1.32vw,1.45rem)] font-medium tracking-tight">
-                Program Membership
+              <ScrollTextReveal as="h2" split="block" delay={80} className={SECTION_HEADING_CLASS}>
+                Bergabunglah dengan komunitas olahraga terbaik dan capai target Anda. Kami sedia program terstruktur - semua di satu tempat.
               </ScrollTextReveal>
-            </div>
 
-            <div className="ml-5 aspect-480/216 w-[82%] overflow-hidden rounded-[5px] bg-gray-100">
-              {/* eslint-disable-next-line @next/next/no-img-element -- aset desain statis dari public/assets/images, bukan gambar CMS /uploads */}
-              <img
-                src="/assets/images/gym-konten-2-olahraga-ub-sport-center.avif"
-                alt="UB Sport Center membership"
-                className="h-full w-full object-cover"
-              />
-            </div>
-          </div>
+              <div className="aspect-480/216 w-full overflow-hidden rounded-[5px] bg-gray-100">
+                {/* eslint-disable-next-line @next/next/no-img-element -- aset desain statis dari public/assets/images, bukan gambar CMS /uploads */}
+                <img
+                  src="/assets/images/gym-konten-2-olahraga-ub-sport-center.avif"
+                  alt="UB Sport Center membership"
+                  className="h-full w-full object-cover"
+                />
+              </div>
 
-          <div className="-ml-16 flex min-w-0 flex-col">
-            <ScrollTextReveal as="h2" split="block" delay={80} className={`${SECTION_HEADING_CLASS} max-w-[62rem]`}>
-              Bergabunglah dengan komunitas olahraga terbaik dan capai target Anda. Kami sedia program terstruktur - semua di satu tempat.
-            </ScrollTextReveal>
-
-            <div className="mt-[8.85rem] grid grid-cols-[minmax(0,33rem)_auto] items-center gap-x-4">
-              <ScrollTextReveal
-                as="p"
-                split="words"
-                delay={150}
-                className="max-w-108 font-bdo text-[clamp(1rem,1.05vw,1.18rem)] leading-[1.35] font-normal tracking-[-0.03em] text-[#242424]"
-              >
+              <ScrollTextReveal as="p" split="words" delay={150} className={BODY_TEXT_CLASS}>
                 Daftarkan diri Anda sekarang dan rasakan pengalaman berolahraga yang sesungguhnya. Pilih paket membership yang sesuai dengan kebutuhan
                 dan jadwal Anda di UB Sport Center.
               </ScrollTextReveal>
+
               {/* eslint-disable-next-line no-restricted-syntax -- '#' bukan URL halaman (tidak ada builder routes.* untuknya); dipertahankan verbatim dari Laravel */}
               <ReservasiButton label="Daftar Sekarang" href="#" />
             </div>
-          </div>
-        </div>
 
-        <hr className="my-[4.35rem] w-full border-gray-200" />
+            <div className="hidden xl:grid xl:grid-cols-[minmax(28rem,30rem)_minmax(0,1fr)] xl:gap-x-[clamp(5rem,6.25vw,7.5rem)]">
+              <div className="flex flex-col gap-[9.4rem]">
+                <div className="flex items-center gap-4">
+                  <span className="section-label-diamond" />
+                  <ScrollTextReveal className="font-bdo text-[clamp(1.16rem,1.32vw,1.45rem)] font-medium tracking-tight">
+                    Program Membership
+                  </ScrollTextReveal>
+                </div>
+
+                <div className="ml-5 aspect-480/216 w-[82%] overflow-hidden rounded-[5px] bg-gray-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- aset desain statis dari public/assets/images, bukan gambar CMS /uploads */}
+                  <img
+                    src="/assets/images/gym-konten-2-olahraga-ub-sport-center.avif"
+                    alt="UB Sport Center membership"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              </div>
+
+              <div className="-ml-16 flex min-w-0 flex-col">
+                <ScrollTextReveal as="h2" split="block" delay={80} className={`${SECTION_HEADING_CLASS} max-w-[62rem]`}>
+                  Bergabunglah dengan komunitas olahraga terbaik dan capai target Anda. Kami sedia program terstruktur - semua di satu tempat.
+                </ScrollTextReveal>
+
+                <div className="mt-[8.85rem] grid grid-cols-[minmax(0,33rem)_auto] items-center gap-x-4">
+                  <ScrollTextReveal
+                    as="p"
+                    split="words"
+                    delay={150}
+                    className="max-w-108 font-bdo text-[clamp(1rem,1.05vw,1.18rem)] leading-[1.35] font-normal tracking-[-0.03em] text-[#242424]"
+                  >
+                    Daftarkan diri Anda sekarang dan rasakan pengalaman berolahraga yang sesungguhnya. Pilih paket membership yang sesuai dengan
+                    kebutuhan dan jadwal Anda di UB Sport Center.
+                  </ScrollTextReveal>
+                  {/* eslint-disable-next-line no-restricted-syntax -- '#' bukan URL halaman (tidak ada builder routes.* untuknya); dipertahankan verbatim dari Laravel */}
+                  <ReservasiButton label="Daftar Sekarang" href="#" />
+                </div>
+              </div>
+            </div>
+
+            <hr className="my-[4.35rem] w-full border-gray-200" />
+          </>
+        )}
         <LogoMarquee density="compact" label="/WORKED WITH" />
       </div>
 

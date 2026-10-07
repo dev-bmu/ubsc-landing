@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
+import { MEMBERSHIP_ENABLED } from '@/config/features'
 
 /**
  * Port dari resources/js/Components/Landing/InfoBanner.tsx (Laravel Inertia).
@@ -15,7 +16,8 @@ import { useEffect, useState } from 'react'
  */
 const ANNOUNCEMENTS_FALLBACK = [
   'Jadwal Zumba 10.00-12.00 ✦ Jadwal Aerobik Saat ini Sedang Tutup',
-  'Dapatkan Diskon 20% untuk Pendaftaran Member Tahunan Bulan Ini',
+  // Promo membership ikut saklar NEXT_PUBLIC_MEMBERSHIP_ENABLED (config/features.ts).
+  ...(MEMBERSHIP_ENABLED ? ['Dapatkan Diskon 20% untuk Pendaftaran Member Tahunan Bulan Ini'] : []),
   'UB Sport Center Buka Setiap Hari: 06.00 - 21.00 WIB'
 ]
 

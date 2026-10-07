@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Clock, Download, Dumbbell, X } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { useEffect, useRef } from 'react'
+import { MEMBERSHIP_ENABLED } from '@/config/features'
 import { routes } from '@/config/routes'
 import axiosInstance from '@/lib/axios'
 import { cn } from '@/lib/utils'
@@ -182,12 +183,14 @@ export function GymMembershipModal({ onClose }: Props) {
                         {data.state === 'expired' ? 'Membership Anda sudah tidak aktif.' : 'Anda belum memiliki membership gym aktif.'}
                       </p>
                       <p className="mt-1 font-mono text-[12px] text-white/40">Nomor member: {data.customerNumber}</p>
-                      <a
-                        href={routes.pricing()}
-                        className="mt-4 inline-block rounded-full bg-orange-500 px-5 py-2 font-bdo text-xs font-bold text-white hover:opacity-90"
-                      >
-                        Lihat Paket Membership
-                      </a>
+                      {MEMBERSHIP_ENABLED && (
+                        <a
+                          href={routes.pricing()}
+                          className="mt-4 inline-block rounded-full bg-orange-500 px-5 py-2 font-bdo text-xs font-bold text-white hover:opacity-90"
+                        >
+                          Lihat Paket Membership
+                        </a>
+                      )}
                     </>
                   )}
                 </div>

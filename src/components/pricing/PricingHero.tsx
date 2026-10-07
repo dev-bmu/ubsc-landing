@@ -2,6 +2,7 @@ import TopBg from '@/assets/hero/Top.avif'
 import RightBg from '@/assets/images/bg-heropricing.avif'
 import { HeroBottomBar } from '@/components/landing/HeroBottomBar'
 import { ScrollTextReveal } from '@/components/landing/ScrollTextReveal'
+import { MEMBERSHIP_ENABLED } from '@/config/features'
 
 /**
  * Port dari resources/js/Components/Pricing/PricingHero.tsx.
@@ -106,7 +107,7 @@ export function PricingHero() {
         sectionNumber="01/"
         sectionLabel="homepage"
         description="UB Sport Center – Temukan fasilitas olahraga modern untuk berlatih, berprestasi, dan berkembang bersama."
-        targetId="pricing-info"
+        targetId={MEMBERSHIP_ENABLED ? 'pricing-info' : 'pricing-facilities'}
         showVideo={false}
       />
     </div>

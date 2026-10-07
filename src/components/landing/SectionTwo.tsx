@@ -6,6 +6,7 @@ import { LogoMarquee } from '@/components/landing/LogoMarquee'
 import { ReservasiButton } from '@/components/landing/ReservasiButton'
 import { ScrollTextReveal } from '@/components/landing/ScrollTextReveal'
 import { SectionDivider } from '@/components/landing/SectionDivider'
+import { MEMBERSHIP_ENABLED } from '@/config/features'
 import { routes } from '@/config/routes'
 import type { GymTrafficDto, MembershipPlanDto, PromoDto, SponsorDto } from '@/types/contracts/contracts'
 import useEmblaCarousel from 'embla-carousel-react'
@@ -510,31 +511,39 @@ export function SectionTwo({ membershipPlans, promos, sponsors, gymTraffic }: Se
             contentClassName="px-3"
           />
 
-          <div className="mt-12 grid gap-12 md:mt-14 lg:mt-16 xl:mt-14 xl:grid-cols-[clamp(360px,27vw,422px)_minmax(0,1fr)] xl:gap-[clamp(3.75rem,5.2vw,7.25rem)] 2xl:grid-cols-[clamp(390px,24vw,470px)_minmax(0,1fr)] 2xl:gap-[clamp(5rem,6vw,9rem)]">
-            <div className="order-2 flex min-w-0 flex-col xl:order-1">
-              <div className="hidden items-center gap-4 xl:mb-6 xl:flex xl:gap-3">
-                <span className="section-label-diamond" />
-                <ScrollTextReveal delay={80} className="font-bdo text-[clamp(1.16rem,1.32vw,1.45rem)] font-medium tracking-tight xl:text-[1.25rem]">
-                  Gabung Member Sekarang
-                </ScrollTextReveal>
-              </div>
+          {/* Membership mati (config/features.ts): kolom paket hilang dan grid jadi satu kolom, supaya kolom teks
+              tidak terjepit di jalur xl sempit milik carousel. */}
+          <div
+            className={`mt-12 grid gap-12 md:mt-14 lg:mt-16 xl:mt-14 ${MEMBERSHIP_ENABLED ? 'xl:grid-cols-[clamp(360px,27vw,422px)_minmax(0,1fr)] xl:gap-[clamp(3.75rem,5.2vw,7.25rem)] 2xl:grid-cols-[clamp(390px,24vw,470px)_minmax(0,1fr)] 2xl:gap-[clamp(5rem,6vw,9rem)]' : ''}`}
+          >
+            {MEMBERSHIP_ENABLED && (
+              <div className="order-2 flex min-w-0 flex-col xl:order-1">
+                <div className="hidden items-center gap-4 xl:mb-6 xl:flex xl:gap-3">
+                  <span className="section-label-diamond" />
+                  <ScrollTextReveal delay={80} className="font-bdo text-[clamp(1.16rem,1.32vw,1.45rem)] font-medium tracking-tight xl:text-[1.25rem]">
+                    Gabung Member Sekarang
+                  </ScrollTextReveal>
+                </div>
 
-              <MembershipPlanCarousel plans={plans} />
-            </div>
+                <MembershipPlanCarousel plans={plans} />
+              </div>
+            )}
 
             <div className="order-1 flex min-w-0 flex-col xl:order-2 xl:w-full">
-              <div className="mb-8 flex items-center gap-4 xl:hidden">
-                <span className="section-label-diamond" />
-                <ScrollTextReveal delay={80} className="font-bdo text-[clamp(1.16rem,1.32vw,1.45rem)] font-medium tracking-tight">
-                  Gabung Member Sekarang
-                </ScrollTextReveal>
-              </div>
+              {MEMBERSHIP_ENABLED && (
+                <div className="mb-8 flex items-center gap-4 xl:hidden">
+                  <span className="section-label-diamond" />
+                  <ScrollTextReveal delay={80} className="font-bdo text-[clamp(1.16rem,1.32vw,1.45rem)] font-medium tracking-tight">
+                    Gabung Member Sekarang
+                  </ScrollTextReveal>
+                </div>
+              )}
 
               <SectionTwoHeadline />
 
               <div className="mt-8 flex flex-col gap-5 sm:mt-12 md:flex-row md:items-center md:justify-between xl:mt-[4.8rem] xl:max-w-[980px] 2xl:max-w-[1120px]">
-                <ReservasiButton label="Daftar Sekarang" href={routes.pricing()} />
-                <div className="md:ml-auto">
+                {MEMBERSHIP_ENABLED && <ReservasiButton label="Daftar Sekarang" href={routes.pricing()} />}
+                <div className={MEMBERSHIP_ENABLED ? 'md:ml-auto' : undefined}>
                   <GymTrafficBadge animate disableHover gymTraffic={gymTraffic} className="mt-0! md:mt-0! xl:mt-0!" />
                 </div>
               </div>
@@ -551,8 +560,9 @@ export function SectionTwo({ membershipPlans, promos, sponsors, gymTraffic }: Se
                     stagger={10}
                     className="mt-5 max-w-[500px] font-bdo text-[clamp(0.9rem,1.04vw,1.08rem)] leading-[1.32] font-normal tracking-[-0.02em] text-black/50 xl:mt-4 xl:max-w-none"
                   >
-                    UB Sport Center buka setiap hari pukul 06.00 - 21.00 dengan pilihan paket bulanan dan tahunan yang fleksibel serta akses fasilitas
-                    lengkap untuk mendukung kebutuhan latihan Anda.
+                    {MEMBERSHIP_ENABLED
+                      ? 'UB Sport Center buka setiap hari pukul 06.00 - 21.00 dengan pilihan paket bulanan dan tahunan yang fleksibel serta akses fasilitas lengkap untuk mendukung kebutuhan latihan Anda.'
+                      : 'UB Sport Center buka setiap hari pukul 06.00 - 21.00 dengan akses fasilitas lengkap untuk mendukung kebutuhan latihan Anda.'}
                   </ScrollTextReveal>
                 </div>
                 <div>
@@ -566,8 +576,9 @@ export function SectionTwo({ membershipPlans, promos, sponsors, gymTraffic }: Se
                     stagger={10}
                     className="mt-5 max-w-[540px] font-bdo text-[clamp(0.9rem,1.04vw,1.08rem)] leading-[1.32] font-normal tracking-[-0.02em] text-black/50 xl:mt-4 xl:max-w-none"
                   >
-                    Temukan paket membership terbaik dengan fasilitas modern dan program latihan profesional untuk membantu Anda mencapai target
-                    kebugaran secara maksimal dan berkelanjutan.
+                    {MEMBERSHIP_ENABLED
+                      ? 'Temukan paket membership terbaik dengan fasilitas modern dan program latihan profesional untuk membantu Anda mencapai target kebugaran secara maksimal dan berkelanjutan.'
+                      : 'Nikmati fasilitas modern dan program latihan profesional untuk membantu Anda mencapai target kebugaran secara maksimal dan berkelanjutan.'}
                   </ScrollTextReveal>
                 </div>
               </div>

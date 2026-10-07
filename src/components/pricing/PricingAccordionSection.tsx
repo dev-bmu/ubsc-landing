@@ -4,6 +4,7 @@ import { ScrollTextReveal } from '@/components/landing/ScrollTextReveal'
 import { SectionDivider } from '@/components/landing/SectionDivider'
 import { AnimatedBookingLink } from '@/components/news/AnimatedBookingLink'
 import { type ClassAccordionData, PricingAccordionItem } from '@/components/pricing/PricingAccordionItem'
+import { MEMBERSHIP_ENABLED } from '@/config/features'
 import { routes } from '@/config/routes'
 import type { FacilityDto } from '@/types/contracts/contracts'
 import { motion } from 'motion/react'
@@ -80,7 +81,7 @@ export function PricingAccordionSection({ facilities = [] }: Props) {
             <div className="mt-5 flex items-center gap-4">
               <span className="section-label-diamond" />
               <ScrollTextReveal className="font-bdo text-[clamp(1.16rem,1.32vw,1.45rem)] font-medium tracking-tight text-white">
-                Gabung Member Sekarang
+                {MEMBERSHIP_ENABLED ? 'Gabung Member Sekarang' : 'Daftar Harga'}
               </ScrollTextReveal>
             </div>
             <ScrollTextReveal as="h2" split="block" delay={80} className={`${DARK_HEADING_CLASS} mt-5`}>
@@ -107,7 +108,7 @@ export function PricingAccordionSection({ facilities = [] }: Props) {
               <div className="flex items-center gap-4">
                 <span className="section-label-diamond" />
                 <ScrollTextReveal className="font-bdo text-[clamp(1.16rem,1.32vw,1.45rem)] font-medium tracking-tight text-white">
-                  Gabung Member Sekarang
+                  {MEMBERSHIP_ENABLED ? 'Gabung Member Sekarang' : 'Daftar Harga'}
                 </ScrollTextReveal>
               </div>
               <AnimatedBookingLink label="More about me" href={routes.comingSoon()} width="17.6rem" />

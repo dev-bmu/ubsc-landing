@@ -5,6 +5,7 @@ import { FacilityBadge } from '@/components/landing/FacilityBadge'
 import { ReservasiButton } from '@/components/landing/ReservasiButton'
 import { ScrollTextReveal } from '@/components/landing/ScrollTextReveal'
 import { SectionDivider } from '@/components/landing/SectionDivider'
+import { MEMBERSHIP_ENABLED } from '@/config/features'
 import type { FacilityDto } from '@/types/contracts/contracts'
 import { Clock } from 'lucide-react'
 import { useState } from 'react'
@@ -152,7 +153,7 @@ export function PricingFacilityList({ facilities = [] }: Props) {
             <div className="flex items-center gap-4">
               <span className="section-label-diamond" />
               <ScrollTextReveal className="font-bdo text-[clamp(1.16rem,1.32vw,1.45rem)] font-medium tracking-tight text-black">
-                Gabung Member Sekarang
+                {MEMBERSHIP_ENABLED ? 'Gabung Member Sekarang' : 'Daftar Harga'}
               </ScrollTextReveal>
             </div>
             <ScrollTextReveal as="h2" split="block" delay={80} className={`${SECTION_HEADING_CLASS} mb-6 indent-8 text-black`}>
@@ -224,7 +225,7 @@ export function PricingFacilityList({ facilities = [] }: Props) {
               <div className="flex items-center gap-4">
                 <span className="section-label-diamond" />
                 <ScrollTextReveal className="font-bdo text-[clamp(1.16rem,1.32vw,1.45rem)] font-medium tracking-tight text-black">
-                  Gabung Member Sekarang
+                  {MEMBERSHIP_ENABLED ? 'Gabung Member Sekarang' : 'Daftar Harga'}
                 </ScrollTextReveal>
               </div>
               {/* eslint-disable-next-line no-restricted-syntax -- '#' adalah placeholder anchor milik sumber Laravel, bukan URL halaman */}

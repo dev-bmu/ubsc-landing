@@ -3,6 +3,7 @@
 import { Footer } from '@/components/landing/Footer'
 import { Navbar } from '@/components/landing/Navbar'
 import { Banner, ProofUploadForm, TransferInstructions, useCountdown } from '@/components/payment/TransferParts'
+import { MEMBERSHIP_ENABLED } from '@/config/features'
 import { authModal, routes } from '@/config/routes'
 import { useAuth } from '@/context/AuthContext'
 import axiosInstance from '@/lib/axios'
@@ -70,9 +71,13 @@ export function MembershipPaymentPage({ membershipId }: { membershipId: string }
             {data.payment.paymentStatus === 'EXPIRED' && (
               <Banner tone="bad" icon={<AlertCircle className="h-5 w-5" />}>
                 Batas waktu transfer terlewat dan pendaftaran dibatalkan.{' '}
-                <a href={routes.pricing()} className="font-semibold underline underline-offset-4">
-                  Daftar ulang
-                </a>
+                {MEMBERSHIP_ENABLED ? (
+                  <a href={routes.pricing()} className="font-semibold underline underline-offset-4">
+                    Daftar ulang
+                  </a>
+                ) : (
+                  'Silakan hubungi admin.'
+                )}
               </Banner>
             )}
 
@@ -87,14 +92,18 @@ export function MembershipPaymentPage({ membershipId }: { membershipId: string }
                 <span className="block font-semibold">Bukti ditolak</span>
                 <span className="block text-white/70">{data.payment.rejectionReason}</span>
                 <span className="mt-1 block text-white/70">
-                  Pendaftaran dibatalkan. Silakan daftar ulang, atau hubungi admin bila dana sudah terkirim.
+                  {MEMBERSHIP_ENABLED
+                    ? 'Pendaftaran dibatalkan. Silakan daftar ulang, atau hubungi admin bila dana sudah terkirim.'
+                    : 'Pendaftaran dibatalkan. Silakan hubungi admin, terutama bila dana sudah terkirim.'}
                 </span>
-                <a
-                  href={routes.pricing()}
-                  className="mt-3 inline-block rounded-full bg-accent-red px-5 py-2 font-bdo text-xs font-bold text-white hover:opacity-90"
-                >
-                  Daftar Ulang
-                </a>
+                {MEMBERSHIP_ENABLED && (
+                  <a
+                    href={routes.pricing()}
+                    className="mt-3 inline-block rounded-full bg-accent-red px-5 py-2 font-bdo text-xs font-bold text-white hover:opacity-90"
+                  >
+                    Daftar Ulang
+                  </a>
+                )}
               </Banner>
             )}
 

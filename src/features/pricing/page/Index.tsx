@@ -6,6 +6,7 @@ import { PricingClassSection } from '@/components/pricing/PricingClassSection'
 import { PricingFacilityList } from '@/components/pricing/PricingFacilityList'
 import { PricingHero } from '@/components/pricing/PricingHero'
 import { PricingInfo } from '@/components/pricing/PricingInfo'
+import { MEMBERSHIP_ENABLED } from '@/config/features'
 import { getFacilities, getMembershipPlans } from '@/services/server'
 import type { FacilityDto, MembershipPlanDto } from '@/types/contracts/contracts'
 
@@ -46,7 +47,7 @@ export async function PricingPage() {
       <main className="relative">
         <Navbar activeSection="Pricing" />
         <PricingHero />
-        <PricingInfo membershipPlans={membershipPlans} />
+        {MEMBERSHIP_ENABLED && <PricingInfo membershipPlans={membershipPlans} />}
         <PricingFacilityList facilities={facilities} />
         <PricingClassSection facilities={facilities} />
         <PricingAccordionSection facilities={facilities} />
