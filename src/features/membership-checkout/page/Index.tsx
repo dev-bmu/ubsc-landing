@@ -4,7 +4,7 @@ import { AuthGate } from '@/components/booking/AuthGate'
 import { Footer } from '@/components/landing/Footer'
 import { Navbar } from '@/components/landing/Navbar'
 import { Banner, rupiah } from '@/components/payment/TransferParts'
-import { MemberPhotoSection } from '@/components/user-dashboard/MemberPhotoSection'
+import { MemberPhotoSection, PHOTO_CHECKIN_NOTE } from '@/components/user-dashboard/MemberPhotoSection'
 import { authModal, routes } from '@/config/routes'
 import { useAuth } from '@/context/AuthContext'
 import { extractApiError } from '@/lib/applyApiErrors'
@@ -12,7 +12,7 @@ import axiosInstance from '@/lib/axios'
 import { cn } from '@/lib/utils'
 import type { ApiSuccess, MembershipCheckoutDto, MembershipCheckoutPreviewDto, MembershipPlanDto } from '@/types/contracts/contracts'
 import { formatCalendarDateIntl } from '@/types/contracts/format'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { AlertCircle, CalendarClock, Check, Clock, QrCode } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
@@ -37,7 +37,6 @@ function durationLabel(months: number): string {
 export function MembershipCheckoutPage({ planId }: { planId: string }) {
   const { user, isLoading } = useAuth()
   const router = useRouter()
-  const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -136,19 +135,10 @@ export function MembershipCheckoutPage({ planId }: { planId: string }) {
                 <StepCard
                   number={2}
                   title="Foto wajah"
-                  hint="Dicocokkan petugas saat Anda masuk gym. Cukup sekali — foto yang sama dipakai seterusnya."
+                  hint={`Diverifikasi staff. ${PHOTO_CHECKIN_NOTE} Cukup sekali — foto yang sama dipakai seterusnya.`}
                   done={photoReady}
                 >
-                  <MemberPhotoSection
-                    url={data.memberPhotoUrl}
-                    status={data.memberPhotoStatus}
-                    compact
-                    onUploaded={() => {
-                      setError(null)
-                      void queryClient.invalidateQueries({ queryKey })
-                      void queryClient.invalidateQueries({ queryKey: ['customer-profile'] })
-                    }}
-                  />
+                  <MemberPhotoSection url={data.memberPhotoUrl} status={data.memberPhotoStatus} compact onUploaded={() => setError(null)} />
                 </StepCard>
               </div>
 

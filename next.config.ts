@@ -87,7 +87,10 @@ const nextConfig: NextConfig = {
       {
         source: '/assets/reels/:path*',
         destination: `${API_BASE_URL}/media/reels/:path*`
-      }
+      },
+      // CDN R2 tanpa header CORS: kartu member (canvas) dan unduh QRIS (fetch blob) membaca gambar CDN lewat
+      // proxy same-origin ini — sameOriginMedia() di src/config/media.ts. Hanya aktif bila CDN dipakai.
+      ...(MEDIA_URL ? [{ source: '/cdn-media/:path*', destination: `${MEDIA_URL.replace(/\/$/, '')}/:path*` }] : [])
     ]
   }
 }

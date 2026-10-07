@@ -13,7 +13,8 @@ import {
   Dumbbell,
   CalendarCheck,
   Wallet,
-  X as CloseIcon
+  X as CloseIcon,
+  type LucideIcon
 } from 'lucide-react'
 import square from '@/assets/hero/square.png'
 import { UnverifiedEmailBanner } from '@/components/auth/EmailVerification'
@@ -38,6 +39,17 @@ type UserModal = 'profile' | 'history' | 'membership'
 // avatar tidak ada di AuthUser (/me hanya id/name/email/role) — field ini
 // dibaca lewat tipe lokal (cast) sampai backend menambahkannya. Jangan ubah AuthContext.
 type UserWithAvatar = AuthUser & { avatar_url?: string | null; avatar?: string | null }
+
+// Satu daftar menu akun untuk dropdown desktop DAN panel mobile — jangan duplikasi per breakpoint.
+interface UserMenuItem {
+  label: string
+  icon: LucideIcon
+  tone: string // kelas kotak ikon (border + gradien), ditulis utuh agar ikut dipindai Tailwind
+  iconTone: string
+  href?: string
+  onSelect?: () => void
+  hint?: string | null
+}
 
 interface NavItem {
   label: string
@@ -178,8 +190,9 @@ export function Navbar({ activeSection = 'Home', showInfoBanner = true, announce
 
   /* ── UI state ── */
   const [mobileOpen, setMobileOpen] = useState(false)
+  // Satu state untuk menu akun desktop & mobile (per breakpoint hanya salah satu yang tampil).
   const [dropdownOpen, setDropdownOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const mobileScrollRef = useRef<HTMLDivElement>(null)
 
   /* ── Modal state (from Navbar__1_.tsx) ── */
   const [authOpen, setAuthOpen] = useState(false)
@@ -250,14 +263,26 @@ export function Navbar({ activeSection = 'Home', showInfoBanner = true, announce
     }
   }, [mobileOpen])
 
-  /* ── Click-outside closes desktop dropdown ── */
+  /* ── Menu akun (desktop & mobile): tutup saat klik/tap di luar atau Escape ── */
   useEffect(() => {
     if (!dropdownOpen) return
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setDropdownOpen(false)
+    // mousedown, bukan pointerdown: di layar sentuh ia hanya terpicu oleh tap, bukan gestur scroll panel mobile.
+    const onMouseDown = (e: MouseEvent) => {
+      // Klik pada scrollbar panel mobile menarget kontainer scroll itu sendiri — bukan klik di luar menu.
+      if (e.target === mobileScrollRef.current) return
+      if (!(e.target as Element).closest?.('[data-user-menu]')) setDropdownOpen(false)
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setDropdownOpen(false)
+      document.activeElement?.closest('[data-user-menu]')?.querySelector<HTMLElement>('[aria-expanded]')?.focus()
+    }
+    document.addEventListener('mousedown', onMouseDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
   }, [dropdownOpen])
 
   /* ── Tautan email "Lihat Kartu Member" (?kartu=1): buka modal Membership Gym begitu sesi siap ── */
@@ -298,6 +323,105 @@ export function Navbar({ activeSection = 'Home', showInfoBanner = true, announce
   useEffect(() => {
     setAvatarFailed(false)
   }, [userAvatar])
+
+  /* ==============================================================
+     MENU AKUN — satu sumber untuk dropdown desktop & panel mobile.
+     Gym Membership sengaja TIDAK ikut MEMBERSHIP_ENABLED: member lama tetap butuh kartunya.
+  ============================================================== */
+  const closeUserMenu = () => {
+    setDropdownOpen(false)
+    setMobileOpen(false)
+  }
+
+  const userMenuItems: UserMenuItem[] = [
+    {
+      label: 'My Profile',
+      icon: UserIcon,
+      tone: 'border-indigo-500/20 from-indigo-500/20 to-purple-500/20 group-hover:border-indigo-500/40',
+      iconTone: 'text-indigo-400',
+      onSelect: () => setActiveUserModal('profile')
+    },
+    {
+      label: 'Payment History',
+      icon: CreditCard,
+      tone: 'border-emerald-500/20 from-emerald-500/20 to-teal-500/20 group-hover:border-emerald-500/40',
+      iconTone: 'text-emerald-400',
+      onSelect: () => setActiveUserModal('history')
+    },
+    {
+      label: 'Gym Membership',
+      icon: Dumbbell,
+      tone: 'border-amber-500/20 from-amber-500/20 to-orange-500/20 group-hover:border-amber-500/40',
+      iconTone: 'text-amber-400',
+      onSelect: () => setActiveUserModal('membership')
+    },
+    {
+      label: 'Riwayat Booking',
+      icon: CalendarCheck,
+      tone: 'border-sky-500/20 from-sky-500/20 to-cyan-500/20 group-hover:border-sky-500/40',
+      iconTone: 'text-sky-400',
+      href: routes.bookingHistory(),
+      hint: pendingPayment ? (pendingPayment.awaiting ? 'Menunggu verifikasi' : 'Ada pembayaran belum selesai') : null
+    },
+    {
+      label: 'Contact Us',
+      icon: MessageCircle,
+      tone: 'border-green-500/20 from-green-500/20 to-emerald-500/20 group-hover:border-green-500/40',
+      iconTone: 'text-green-400',
+      onSelect: () => window.open('https://wa.me/6285280809080', '_blank')
+    }
+  ]
+
+  const renderUserMenuItems = () =>
+    userMenuItems.map(({ label, icon: Icon, tone, iconTone, href, onSelect, hint }) => {
+      const itemProps = {
+        whileHover: { x: 3, backgroundColor: 'rgba(255, 255, 255, 0.05)' },
+        transition: { duration: 0.15 },
+        className:
+          'group flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-white/60'
+      }
+      const body = (
+        <>
+          <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-linear-to-br transition-all', tone)}>
+            <Icon size={15} className={iconTone} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-clash text-sm font-medium text-white/90">{label}</p>
+            {hint && <p className="font-bdo text-[11px] text-amber-300">{hint}</p>}
+          </div>
+          {hint ? (
+            <span className="h-2 w-2 shrink-0 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.9)]" />
+          ) : (
+            <svg
+              className="h-4 w-4 shrink-0 text-white/30 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-white/50"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          )}
+        </>
+      )
+      return href ? (
+        <motion.a key={label} href={href} onClick={closeUserMenu} {...itemProps}>
+          {body}
+        </motion.a>
+      ) : (
+        <motion.button
+          key={label}
+          type="button"
+          onClick={() => {
+            closeUserMenu()
+            onSelect?.()
+          }}
+          {...itemProps}
+        >
+          {body}
+        </motion.button>
+      )
+    })
 
   /* ==============================================================
      RENDER
@@ -372,10 +496,12 @@ export function Navbar({ activeSection = 'Home', showInfoBanner = true, announce
                 </div>
               </div>
             ) : isLoggedIn ? (
-              <div className="relative hidden min-[1100px]:block" ref={dropdownRef}>
+              <div className="relative hidden min-[1100px]:block" data-user-menu>
                 <div className="ubsc-cta-wrap origin-right scale-90 xl:scale-100">
                   <button
                     type="button"
+                    aria-expanded={dropdownOpen}
+                    aria-controls="user-menu-desktop"
                     onClick={() => setDropdownOpen((v) => !v)}
                     className="ubsc-cta-btn group flex cursor-pointer items-stretch overflow-hidden rounded-lg bg-white"
                   >
@@ -421,6 +547,7 @@ export function Navbar({ activeSection = 'Home', showInfoBanner = true, announce
                 <AnimatePresence>
                   {dropdownOpen && (
                     <motion.div
+                      id="user-menu-desktop"
                       initial={{
                         opacity: 0,
                         y: -6,
@@ -515,154 +642,7 @@ export function Navbar({ activeSection = 'Home', showInfoBanner = true, announce
                       <div className="mx-4 h-px bg-white/5" />
 
                       {/* Action Menu */}
-                      <div className="flex flex-col gap-0.5 px-2 py-2">
-                        <motion.button
-                          type="button"
-                          whileHover={{
-                            x: 3,
-                            backgroundColor: 'rgba(255, 255, 255, 0.05)'
-                          }}
-                          transition={{
-                            duration: 0.15
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setDropdownOpen(false)
-                            setActiveUserModal('profile')
-                          }}
-                          className="group flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all duration-150"
-                        >
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-indigo-500/20 bg-linear-to-br from-indigo-500/20 to-purple-500/20 transition-all group-hover:border-indigo-500/40">
-                            <UserIcon size={15} className="text-indigo-400" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-clash text-sm font-medium text-white/90">My Profile</p>
-                          </div>
-                          <svg
-                            className="h-4 w-4 text-white/30 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-white/50"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </motion.button>
-
-                        <motion.button
-                          type="button"
-                          whileHover={{
-                            x: 3,
-                            backgroundColor: 'rgba(255, 255, 255, 0.05)'
-                          }}
-                          transition={{
-                            duration: 0.15
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setDropdownOpen(false)
-                            setActiveUserModal('history')
-                          }}
-                          className="group flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all duration-150"
-                        >
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-emerald-500/20 bg-linear-to-br from-emerald-500/20 to-teal-500/20 transition-all group-hover:border-emerald-500/40">
-                            <CreditCard size={15} className="text-emerald-400" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-clash text-sm font-medium text-white/90">Payment History</p>
-                          </div>
-                          <svg
-                            className="h-4 w-4 text-white/30 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-white/50"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </motion.button>
-
-                        <motion.button
-                          type="button"
-                          whileHover={{
-                            x: 3,
-                            backgroundColor: 'rgba(255, 255, 255, 0.05)'
-                          }}
-                          transition={{
-                            duration: 0.15
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setDropdownOpen(false)
-                            setActiveUserModal('membership')
-                          }}
-                          className="group flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all duration-150"
-                        >
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-amber-500/20 bg-linear-to-br from-amber-500/20 to-orange-500/20 transition-all group-hover:border-amber-500/40">
-                            <Dumbbell size={15} className="text-amber-400" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-clash text-sm font-medium text-white/90">Gym Membership</p>
-                          </div>
-                          <svg
-                            className="h-4 w-4 text-white/30 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-white/50"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </motion.button>
-
-                        <a
-                          href={routes.bookingHistory()}
-                          onClick={() => setDropdownOpen(false)}
-                          className="group flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all duration-150 hover:bg-white/5"
-                        >
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-sky-500/20 bg-linear-to-br from-sky-500/20 to-cyan-500/20 transition-all group-hover:border-sky-500/40">
-                            <CalendarCheck size={15} className="text-sky-400" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-clash text-sm font-medium text-white/90">Riwayat Booking</p>
-                            {pendingPayment && (
-                              <p className="font-bdo text-[11px] text-amber-300">
-                                {pendingPayment.awaiting ? 'Menunggu verifikasi' : 'Ada pembayaran belum selesai'}
-                              </p>
-                            )}
-                          </div>
-                          {pendingPayment && <span className="h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.9)]" />}
-                        </a>
-
-                        <motion.button
-                          type="button"
-                          whileHover={{
-                            x: 3,
-                            backgroundColor: 'rgba(255, 255, 255, 0.05)'
-                          }}
-                          transition={{
-                            duration: 0.15
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setDropdownOpen(false)
-                            window.open('https://wa.me/6285280809080', '_blank')
-                          }}
-                          className="group flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all duration-150"
-                        >
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-green-500/20 bg-linear-to-br from-green-500/20 to-emerald-500/20 transition-all group-hover:border-green-500/40">
-                            <MessageCircle size={15} className="text-green-400" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-clash text-sm font-medium text-white/90">Contact Us</p>
-                          </div>
-                          <svg
-                            className="h-4 w-4 text-white/30 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-white/50"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </motion.button>
-                      </div>
+                      <div className="flex flex-col gap-0.5 px-2 py-2">{renderUserMenuItems()}</div>
 
                       {/* Divider */}
                       <div className="mx-4 h-px bg-white/5" />
@@ -767,11 +747,13 @@ export function Navbar({ activeSection = 'Home', showInfoBanner = true, announce
       {/* ── Mobile slide-down menu ── */}
       <div
         className={cn(
-          'fixed right-0 left-0 z-40 transition-transform duration-500 ease-out min-[1100px]:hidden',
+          'fixed right-0 left-0 z-40 flex flex-col transition-transform duration-500 ease-out min-[1100px]:hidden',
           mobileOpen ? 'translate-y-0' : '-translate-y-full'
         )}
         style={{
           top: showInfoBanner ? 32 : 14,
+          // Menu akun yang terbuka menambah 5 baris: panel dibatasi tinggi layar, isinya (di bawah header) di-scroll.
+          maxHeight: `calc(100dvh - ${showInfoBanner ? 32 : 14}px)`,
           background: 'rgba(8,9,20,0.97)',
           backdropFilter: 'blur(24px) saturate(130%)',
           WebkitBackdropFilter: 'blur(24px) saturate(130%)',
@@ -779,111 +761,146 @@ export function Navbar({ activeSection = 'Home', showInfoBanner = true, announce
           boxShadow: '0 16px 64px rgba(0,0,0,0.55)'
         }}
       >
-        <div className="h-[80px] md:h-[104px]" />
-        <div className="h-px w-full bg-white/10" />
+        <div className="h-[80px] shrink-0 md:h-[104px]" />
+        <div className="h-px w-full shrink-0 bg-white/10" />
 
-        <ul className="flex flex-col px-8 pt-0">
-          {NAV_ITEMS.map((item, index) => (
-            <li key={item.number}>
-              <a
-                href={item.href}
-                onClick={() => setMobileOpen(false)}
-                className={cn(
-                  'flex items-baseline justify-between py-5 font-clash text-xl transition-colors',
-                  item.label === activeSection ? 'text-white' : 'text-white/45 hover:text-white/75'
-                )}
-              >
-                <span
-                  style={{
-                    textShadow: '0 1px 8px rgba(0,0,0,0.9)'
-                  }}
+        {/* data-lenis-prevent: tanpa itu Lenis (smoothWheel) menelan wheel/trackpad dan menggulir halaman di belakang panel.
+            pb-24 saat pill pembayaran tampil: pill (fixed, z-120) jangan menutupi Logout di dasar panel. */}
+        <div
+          ref={mobileScrollRef}
+          data-lenis-prevent
+          className={cn('min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain', isLoggedIn && pendingPayment && 'pb-24')}
+        >
+          <ul className="flex flex-col px-8 pt-0">
+            {NAV_ITEMS.map((item, index) => (
+              <li key={item.number}>
+                <a
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    'flex items-baseline justify-between py-5 font-clash text-xl transition-colors',
+                    item.label === activeSection ? 'text-white' : 'text-white/45 hover:text-white/75'
+                  )}
                 >
-                  {item.label}
-                </span>
-                <sup className="text-[10px] text-white/30">{item.number}</sup>
-              </a>
-              {index < NAV_ITEMS.length - 1 && <div className="h-px w-full" />}
-            </li>
-          ))}
-        </ul>
+                  <span
+                    style={{
+                      textShadow: '0 1px 8px rgba(0,0,0,0.9)'
+                    }}
+                  >
+                    {item.label}
+                  </span>
+                  <sup className="text-[10px] text-white/30">{item.number}</sup>
+                </a>
+                {index < NAV_ITEMS.length - 1 && <div className="h-px w-full" />}
+              </li>
+            ))}
+          </ul>
 
-        <div className="mx-8 mt-0 h-px bg-white/10" />
+          <div className="mx-8 mt-0 h-px bg-white/10" />
 
-        <div className="px-[clamp(1.25rem,4vw,2rem)] py-[clamp(0.75rem,3vw,1.5rem)]">
-          {authLoading ? (
-            <div className="h-[clamp(4rem,13vw,6rem)] w-full animate-pulse rounded-xl bg-white/90" aria-hidden />
-          ) : isLoggedIn ? (
-            <div className="flex flex-col gap-2">
-              {/* Mobile: profile card */}
+          <div className="px-[clamp(1.25rem,4vw,2rem)] py-[clamp(0.75rem,3vw,1.5rem)]">
+            {authLoading ? (
+              <div className="h-[clamp(4rem,13vw,6rem)] w-full animate-pulse rounded-xl bg-white/90" aria-hidden />
+            ) : isLoggedIn ? (
+              <div className="flex flex-col gap-2" data-user-menu>
+                {/* Mobile: profile card — membuka menu akun yang sama dengan dropdown desktop */}
+                <button
+                  type="button"
+                  aria-expanded={dropdownOpen}
+                  aria-controls="user-menu-mobile"
+                  onClick={() => {
+                    const opening = !dropdownOpen
+                    setDropdownOpen(opening)
+                    // Kartu ada di dasar panel: gulir agar menu yang baru terbuka (plus Logout) terlihat.
+                    if (opening)
+                      requestAnimationFrame(() => {
+                        const el = mobileScrollRef.current
+                        el?.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+                      })
+                  }}
+                  className="group flex w-full items-stretch overflow-hidden rounded-xl bg-white"
+                >
+                  <div className="m-1.5 h-[clamp(3rem,10vw,5rem)] w-[clamp(3rem,10vw,5rem)] shrink-0 overflow-hidden rounded-lg">
+                    {userAvatar && !avatarFailed ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- avatar user (URL runtime) dgn onError fallback, bukan next/image
+                      <img
+                        src={userAvatar}
+                        alt={firstName}
+                        className="h-full w-full object-cover"
+                        referrerPolicy="no-referrer"
+                        onError={() => setAvatarFailed(true)}
+                      />
+                    ) : (
+                      <div className="ubsc-avatar-bg flex h-full w-full items-center justify-center">
+                        <span className="font-clash text-2xl font-bold text-white/90 select-none">{initials}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col justify-center px-[clamp(0.5rem,2vw,0.875rem)] py-2 text-left">
+                    <p className="font-clash text-[clamp(0.75rem,3.5vw,1rem)] leading-tight font-semibold text-navy-900">{firstName}</p>
+                    <p className="mt-0.5 font-clash text-[clamp(0.625rem,2.8vw,0.875rem)] font-medium text-navy-900/80">{user?.role ?? 'Member'}</p>
+                    <p className="-mt-0.5 truncate font-clash text-[clamp(0.55rem,2.4vw,0.75rem)] text-navy-900/40">{user?.email}</p>
+                  </div>
+                  <div className="flex items-center pr-[clamp(0.5rem,2vw,0.875rem)]">
+                    <ChevronDown
+                      className={cn(
+                        'h-[clamp(1rem,4vw,1.25rem)] w-[clamp(1rem,4vw,1.25rem)] text-navy-900 transition-transform duration-300',
+                        dropdownOpen && 'rotate-180'
+                      )}
+                    />
+                  </div>
+                </button>
+                <AnimatePresence initial={false}>
+                  {dropdownOpen && (
+                    <motion.div
+                      id="user-menu-mobile"
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                      className="flex flex-col gap-0.5 rounded-xl border border-white/10 bg-white/[0.03] p-1.5"
+                    >
+                      {renderUserMenuItems()}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeUserMenu()
+                    logout()
+                  }}
+                  className="flex items-center gap-3 rounded-xl border border-red-500/20 px-4 py-3 font-clash text-sm font-semibold text-red-400 transition-colors hover:bg-red-500/15"
+                >
+                  <LogOut size={15} />
+                  Logout
+                </button>
+              </div>
+            ) : (
+              /* Mobile: guest card */
               <button
                 type="button"
                 onClick={() => {
                   setMobileOpen(false)
-                  setActiveUserModal('profile')
+                  setAuthOpen(true)
                 }}
                 className="group flex w-full items-stretch overflow-hidden rounded-xl bg-white"
               >
-                <div className="m-1.5 h-[clamp(3rem,10vw,5rem)] w-[clamp(3rem,10vw,5rem)] shrink-0 overflow-hidden rounded-lg">
-                  {userAvatar && !avatarFailed ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- avatar user (URL runtime) dgn onError fallback, bukan next/image
-                    <img
-                      src={userAvatar}
-                      alt={firstName}
-                      className="h-full w-full object-cover"
-                      referrerPolicy="no-referrer"
-                      onError={() => setAvatarFailed(true)}
-                    />
-                  ) : (
-                    <div className="ubsc-avatar-bg flex h-full w-full items-center justify-center">
-                      <span className="font-clash text-2xl font-bold text-white/90 select-none">{initials}</span>
-                    </div>
-                  )}
+                <div className="m-1.5 aspect-square w-[clamp(3rem,10vw,5rem)] shrink-0 overflow-hidden rounded-lg">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- aset desain dari src/assets (StaticImageData), bukan gambar CMS, bukan next/image */}
+                  <img src={square.src} alt="" className="h-full w-full object-cover" />
                 </div>
-                <div className="flex min-w-0 flex-1 flex-col justify-center px-[clamp(0.5rem,2vw,0.875rem)] py-2 text-left">
-                  <p className="font-clash text-[clamp(0.75rem,3.5vw,1rem)] leading-tight font-semibold text-navy-900">{firstName}</p>
-                  <p className="mt-0.5 font-clash text-[clamp(0.625rem,2.8vw,0.875rem)] font-medium text-navy-900/80">{user?.role ?? 'Member'}</p>
-                  <p className="-mt-0.5 truncate font-clash text-[clamp(0.55rem,2.4vw,0.75rem)] text-navy-900/40">{user?.email}</p>
+                <div className="flex flex-col justify-center px-[clamp(0.5rem,2vw,0.875rem)] py-2 text-left">
+                  <p className="font-clash text-[clamp(0.75rem,3.5vw,1rem)] leading-tight font-semibold text-navy-900">Lets Get Started</p>
+                  <p className="mt-0.5 font-clash text-[clamp(0.625rem,2.8vw,0.875rem)] text-navy-900/80">Register Now</p>
+                  <p className="-mt-0.5 font-clash text-[clamp(0.55rem,2.4vw,0.75rem)] text-navy-900/40">Guest</p>
                 </div>
-                <div className="flex items-center pr-[clamp(0.5rem,2vw,0.875rem)]">
+                <div className="ml-auto flex items-center pr-[clamp(0.5rem,2vw,0.875rem)]">
                   <ArrowRight className="h-[clamp(1rem,4vw,1.25rem)] w-[clamp(1rem,4vw,1.25rem)] text-navy-900 transition-transform group-hover:translate-x-0.5" />
                 </div>
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileOpen(false)
-                  logout()
-                }}
-                className="flex items-center gap-3 rounded-xl border border-red-500/20 px-4 py-3 font-clash text-sm font-semibold text-red-400 transition-colors hover:bg-red-500/15"
-              >
-                <LogOut size={15} />
-                Logout
-              </button>
-            </div>
-          ) : (
-            /* Mobile: guest card */
-            <button
-              type="button"
-              onClick={() => {
-                setMobileOpen(false)
-                setAuthOpen(true)
-              }}
-              className="group flex w-full items-stretch overflow-hidden rounded-xl bg-white"
-            >
-              <div className="m-1.5 aspect-square w-[clamp(3rem,10vw,5rem)] shrink-0 overflow-hidden rounded-lg">
-                {/* eslint-disable-next-line @next/next/no-img-element -- aset desain dari src/assets (StaticImageData), bukan gambar CMS, bukan next/image */}
-                <img src={square.src} alt="" className="h-full w-full object-cover" />
-              </div>
-              <div className="flex flex-col justify-center px-[clamp(0.5rem,2vw,0.875rem)] py-2 text-left">
-                <p className="font-clash text-[clamp(0.75rem,3.5vw,1rem)] leading-tight font-semibold text-navy-900">Lets Get Started</p>
-                <p className="mt-0.5 font-clash text-[clamp(0.625rem,2.8vw,0.875rem)] text-navy-900/80">Register Now</p>
-                <p className="-mt-0.5 font-clash text-[clamp(0.55rem,2.4vw,0.75rem)] text-navy-900/40">Guest</p>
-              </div>
-              <div className="ml-auto flex items-center pr-[clamp(0.5rem,2vw,0.875rem)]">
-                <ArrowRight className="h-[clamp(1rem,4vw,1.25rem)] w-[clamp(1rem,4vw,1.25rem)] text-navy-900 transition-transform group-hover:translate-x-0.5" />
-              </div>
-            </button>
-          )}
+            )}
+          </div>
         </div>
       </div>
 

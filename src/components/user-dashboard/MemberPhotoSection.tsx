@@ -1,5 +1,6 @@
 'use client'
 
+import { useQueryClient } from '@tanstack/react-query'
 import { BadgeCheck, Camera, Clock, FileUp, XCircle, type LucideIcon } from 'lucide-react'
 import { useEffect, useState, type ChangeEvent } from 'react'
 import { extractApiError } from '@/lib/applyApiErrors'
@@ -7,10 +8,13 @@ import axiosInstance from '@/lib/axios'
 import { cn } from '@/lib/utils'
 import type { MemberPhotoStatus } from '@/types/contracts/contracts'
 
+/** Check-in tidak perlu menunggu antrean: petugas bisa menyetujui foto di meja gym (ubsc-api gym-services). */
+export const PHOTO_CHECKIN_NOTE = 'Bila belum disetujui saat Anda datang, petugas mencocokkan wajah Anda lalu menyetujuinya di meja gym.'
+
 /**
  * Foto wajah untuk validasi saat masuk gym — BUKAN avatar. Berlaku setelah disetujui staff; mengunggah
  * ulang selalu kembali ke antrean tinjauan (PRD tambahan 2026-09, tahap B). Dipakai modal profil dan
- * halaman checkout membership.
+ * halaman checkout membership, dan modal kartu member (foto belum ada / ditolak).
  */
 export function MemberPhotoSection({
   url,
@@ -20,7 +24,7 @@ export function MemberPhotoSection({
 }: {
   url: string | null
   status: MemberPhotoStatus | null
-  onUploaded: () => void
+  onUploaded?: () => void
   /** Tanpa judul + penjelasan sendiri — pemanggil (langkah checkout) sudah menuliskannya. */
   compact?: boolean
 }) {
@@ -29,6 +33,7 @@ export function MemberPhotoSection({
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     return () => {
@@ -56,9 +61,11 @@ export function MemberPhotoSection({
     try {
       await axiosInstance.post('/customer/member-photo', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
       setSuccess(true)
+      // Pratinjau lokal dibiarkan: itu gambar yang sama, dan mencegah kotak foto kosong selama data dimuat ulang.
       setFile(null)
-      setPreview(null)
-      onUploaded()
+      // Semua tampilan yang membaca foto/status ini (kartu, profil, checkout) — jangan tampilkan cache lama.
+      for (const queryKey of [['membership-card'], ['customer-profile'], ['membership-checkout']]) void queryClient.invalidateQueries({ queryKey })
+      onUploaded?.()
     } catch (err) {
       const { message, fieldErrors } = extractApiError(err, 'Gagal mengunggah foto. Silakan coba lagi.')
       setError(fieldErrors.photo ?? message)
@@ -74,7 +81,11 @@ export function MemberPhotoSection({
         cls: 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300',
         label: 'Disetujui — foto dipakai saat masuk gym'
       },
-      pending: { icon: Clock, cls: 'border-sky-400/25 bg-sky-400/10 text-sky-300', label: 'Menunggu tinjauan staff' },
+      pending: {
+        icon: Clock,
+        cls: 'border-sky-400/25 bg-sky-400/10 text-sky-300',
+        label: `Menunggu verifikasi staff. ${PHOTO_CHECKIN_NOTE}`
+      },
       rejected: { icon: XCircle, cls: 'border-rose-400/25 bg-rose-400/10 text-rose-300', label: 'Ditolak — unggah foto wajah yang jelas' }
     } as Record<MemberPhotoStatus, { icon: LucideIcon; cls: string; label: string }>
   )[status ?? 'pending']
@@ -91,8 +102,8 @@ export function MemberPhotoSection({
       </div>
 
       {status && (
-        <div className={cn('flex items-center gap-2 rounded-xl border px-3 py-2 font-bdo text-[12px]', badge.cls)}>
-          <BadgeIcon className="h-4 w-4 shrink-0" />
+        <div className={cn('flex items-start gap-2 rounded-xl border px-3 py-2 font-bdo text-[12px] leading-relaxed', badge.cls)}>
+          <BadgeIcon className="mt-0.5 h-4 w-4 shrink-0" />
           {badge.label}
         </div>
       )}
@@ -118,7 +129,7 @@ export function MemberPhotoSection({
       </div>
 
       {error && <p className="font-bdo text-[12px] text-rose-400">{error}</p>}
-      {success && <p className="font-bdo text-[12px] text-emerald-400">Foto terkirim. Staff akan meninjaunya.</p>}
+      {success && <p className="font-bdo text-[12px] text-emerald-400">Foto terkirim dan menunggu verifikasi staff.</p>}
 
       <button
         type="button"

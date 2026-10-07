@@ -1,5 +1,6 @@
 'use client'
 
+import { sameOriginMedia } from '@/config/media'
 import { extractApiError } from '@/lib/applyApiErrors'
 import axiosInstance from '@/lib/axios'
 import type { ApiSuccess, PaymentBankDto, PaymentQrisDto, TransferPaymentDto } from '@/types/contracts/contracts'
@@ -102,7 +103,7 @@ export function Banner({ tone, icon, children }: { tone: 'ok' | 'warn' | 'bad' |
 async function downloadQris(event: MouseEvent<HTMLAnchorElement>, url: string): Promise<void> {
   event.preventDefault()
   try {
-    const res = await fetch(url)
+    const res = await fetch(sameOriginMedia(url))
     if (!res.ok) throw new Error(String(res.status))
     const href = URL.createObjectURL(await res.blob())
     const link = document.createElement('a')

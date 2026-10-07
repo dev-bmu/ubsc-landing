@@ -4,6 +4,8 @@
  * sama persis dengan yang dilihatnya. Ukuran CR80 (85,6 × 54 mm) pada 300 dpi.
  */
 
+import { sameOriginMedia } from '@/config/media'
+
 export const CARD_WIDTH = 1012
 export const CARD_HEIGHT = 638
 
@@ -15,6 +17,8 @@ export interface MemberCardContent {
   validityLabel: string
   validityValue: string
   photoUrl: string | null
+  /** Foto sudah diunggah tapi belum disetujui staff — digambar dengan penanda MENUNGGU VERIFIKASI. */
+  photoPending: boolean
 }
 
 const NAVY = '#0B1E3B'
@@ -25,8 +29,8 @@ const TEXT = '"BDO Grotesk", sans-serif'
 function loadImage(src: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image()
-    // Foto member di produksi datang dari CDN (domain lain). Tanpa mode CORS, canvas jadi "tainted" dan
-    // unduhan PNG gagal; dengan mode CORS, CDN tanpa Access-Control-Allow-Origin hanya menghilangkan fotonya.
+    // Mode CORS wajib: tanpa itu canvas jadi "tainted" dan unduhan PNG gagal. CDN R2 tidak mengirim
+    // Access-Control-Allow-Origin, jadi URL CDN dibaca lewat proxy same-origin (sameOriginMedia).
     img.crossOrigin = 'anonymous'
     img.onload = () => resolve(img)
     img.onerror = () => resolve(null)
@@ -63,7 +67,7 @@ export async function drawMemberCard(canvas: HTMLCanvasElement, card: MemberCard
   const ctx = canvas.getContext('2d')
   if (!ctx) return
   await Promise.all([`700 46px ${DISPLAY}`, `600 28px ${TEXT}`].map((font) => document.fonts.load(font).catch(() => [])))
-  const [photo, logo] = await Promise.all([card.photoUrl ? loadImage(card.photoUrl) : null, loadImage('/ubsc.png')])
+  const [photo, logo] = await Promise.all([card.photoUrl ? loadImage(sameOriginMedia(card.photoUrl)) : null, loadImage('/ubsc.png')])
 
   const W = CARD_WIDTH
   const H = CARD_HEIGHT
@@ -126,6 +130,19 @@ export async function drawMemberCard(canvas: HTMLCanvasElement, card: MemberCard
     const sw = pw / scale
     const sh = ph / scale
     ctx.drawImage(photo, (photo.width - sw) / 2, (photo.height - sh) / 2, sw, sh, px, py, pw, ph)
+    if (card.photoPending) {
+      ctx.fillStyle = 'rgba(245,158,11,0.92)'
+      ctx.fillRect(px, py + ph - 68, pw, 68)
+      // 22px dua baris: satu baris tak muat selebar foto, dan 14px tak terbaca saat kartu diperkecil di ponsel.
+      ctx.font = `700 22px ${TEXT}`
+      ctx.fillStyle = NAVY
+      ctx.textAlign = 'center'
+      ctx.letterSpacing = '1px'
+      ctx.fillText('MENUNGGU', px + pw / 2, py + ph - 40)
+      ctx.fillText('VERIFIKASI', px + pw / 2, py + ph - 14)
+      ctx.letterSpacing = '0px'
+      ctx.textAlign = 'left'
+    }
   } else {
     ctx.font = `600 20px ${TEXT}`
     ctx.fillStyle = 'rgba(255,255,255,0.45)'

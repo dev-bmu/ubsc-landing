@@ -10,6 +10,7 @@ import axiosInstance from '@/lib/axios'
 import { cn } from '@/lib/utils'
 import type { ApiSuccess, MembershipCardDto } from '@/types/contracts/contracts'
 import { formatCalendarDateIntl } from '@/types/contracts/format'
+import { MemberPhotoSection, PHOTO_CHECKIN_NOTE } from './MemberPhotoSection'
 import { CARD_HEIGHT, CARD_WIDTH, drawMemberCard } from './memberCard'
 
 /**
@@ -31,7 +32,7 @@ const longDate = (key: string) => formatCalendarDateIntl(key, { day: 'numeric', 
 
 const STATE_LABEL: Record<MembershipCardDto['state'], { label: string; cls: string }> = {
   active: { label: 'Aktif', cls: 'bg-emerald-500/15 text-emerald-300' },
-  photo_required: { label: 'Perlu foto disetujui', cls: 'bg-amber-500/15 text-amber-300' },
+  photo_required: { label: 'Foto belum disetujui', cls: 'bg-amber-500/15 text-amber-300' },
   upcoming: { label: 'Belum mulai', cls: 'bg-sky-500/15 text-sky-300' },
   pending_payment: { label: 'Menunggu pembayaran', cls: 'bg-amber-500/15 text-amber-300' },
   expired: { label: 'Tidak aktif', cls: 'bg-slate-500/15 text-slate-400' },
@@ -72,7 +73,10 @@ export function GymMembershipModal({ onClose }: Props) {
         planName: membership.planName,
         validityLabel: upcoming ? 'MULAI' : 'BERLAKU S.D.',
         validityValue: longDate(upcoming ? membership.startDate : membership.endDate),
-        photoUrl: data.photoUrl
+        // Foto pending tetap digambar (dengan penanda) supaya pelanggan melihat foto yang ia kirim; foto
+        // ditolak tidak — itu bukan foto yang dipakai petugas.
+        photoUrl: data.photoStatus === 'rejected' ? null : data.photoUrl,
+        photoPending: data.photoStatus !== 'approved'
       },
       qrRef.current
     )
@@ -156,12 +160,21 @@ export function GymMembershipModal({ onClose }: Props) {
                       {data.daysRemaining} hari tersisa
                     </p>
                   )}
-                  {data.state === 'photo_required' && (
-                    <p className="mt-3 rounded-xl border border-amber-400/25 bg-amber-400/10 px-3 py-2 font-bdo text-[12px] text-amber-200">
-                      {data.photoStatus === 'pending'
-                        ? 'Foto wajah Anda sedang ditinjau. Petugas bisa menyetujuinya saat Anda datang.'
-                        : 'Unggah foto wajah di menu Profil Saya — petugas mencocokkannya saat Anda masuk gym.'}
+                  {/* Check-in gym menolak member yang fotonya belum disetujui (ubsc-api gym-services evaluate). */}
+                  {data.photoStatus === 'pending' && data.photoUrl && (
+                    <p className="mt-3 rounded-xl border border-amber-400/25 bg-amber-400/10 px-3 py-2 font-bdo text-[12px] leading-relaxed text-amber-200">
+                      Foto menunggu verifikasi staff. {PHOTO_CHECKIN_NOTE}
                     </p>
+                  )}
+                  {(data.photoStatus === 'rejected' || !data.photoUrl) && (
+                    <div className="mt-5 space-y-3 border-t border-white/[0.07] pt-5">
+                      <p className="rounded-xl border border-rose-400/25 bg-rose-400/10 px-3 py-2 font-bdo text-[12px] leading-relaxed text-rose-200">
+                        {data.photoStatus === 'rejected'
+                          ? 'Foto Anda ditolak staff. Unggah foto wajah baru yang jelas di bawah ini — kartu bisa dipakai check-in setelah foto disetujui.'
+                          : 'Anda belum mengunggah foto wajah. Unggah di bawah ini — kartu bisa dipakai check-in setelah foto disetujui staff.'}
+                      </p>
+                      <MemberPhotoSection url={null} status={null} />
+                    </div>
                   )}
                 </>
               ) : (
