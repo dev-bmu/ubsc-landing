@@ -142,10 +142,13 @@ export function BookingHistoryPage() {
                       )}
                     </div>
                     <div className="text-right">
-                      {/* Yang ditransfer (harga + biaya admin + kode unik) — angka yang sama dengan halaman pembayaran. */}
+                      {/* Yang ditransfer (harga + kode unik; + biaya admin transaksi lama) — angka yang sama dengan halaman pembayaran. */}
                       <p className="font-bdo text-lg font-bold text-white">{rupiah(b.hasPayment ? b.transferTotal : b.amount)}</p>
                       {b.hasPayment && b.transferTotal !== b.amount && (
-                        <p className="font-bdo text-[11px] text-neutral-500">harga {rupiah(b.amount)} + biaya admin + kode unik</p>
+                        <p className="font-bdo text-[11px] text-neutral-500">
+                          harga {rupiah(b.amount)}
+                          {b.adminFee > 0 && <> + biaya admin {rupiah(b.adminFee)}</>} + kode unik
+                        </p>
                       )}
                       <div className="mt-2 flex flex-wrap justify-end gap-2">
                         <span className={`rounded-full px-3 py-1 font-bdo text-[11px] font-bold ring-1 ${statusClass[b.status]}`}>

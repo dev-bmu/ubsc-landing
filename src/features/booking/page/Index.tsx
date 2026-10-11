@@ -44,14 +44,14 @@ import type { ApprovedReviewDto, BookingFacilityDto } from '@/types/contracts/co
 // (camelCase, id uuid string) dan renamenya dikerjakan BookingSection.
 export async function BookingPage() {
   let facilities: BookingFacilityDto[] = []
-  // Tanpa fasilitas tidak ada yang bisa dipesan, jadi nilai cadangan biaya tidak pernah tampil.
-  let fees: BookingFees = { adminFee: 0, uniqueCodeMax: 0 }
+  // Tanpa fasilitas tidak ada yang bisa dipesan, jadi nilai cadangan rentang kode tidak pernah tampil.
+  let fees: BookingFees = { uniqueCodeMin: 0, uniqueCodeMax: 0 }
   let approvedReviews: ApprovedReviewDto[] = []
 
   try {
     const index = await getBookingFacilities()
     facilities = index.facilities
-    fees = { adminFee: index.adminFee, uniqueCodeMax: index.uniqueCodeMax }
+    fees = { uniqueCodeMin: index.uniqueCodeMin, uniqueCodeMax: index.uniqueCodeMax }
   } catch {
     facilities = []
   }

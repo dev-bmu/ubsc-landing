@@ -150,7 +150,7 @@ export function PaymentHistoryModal({ onClose }: Props) {
                         {dateFor(t)} · <span className="font-mono">{t.receiptNumber}</span>
                       </p>
                       <p className="mt-0.5 font-bdo text-[13px] text-white/70">
-                        {/* Yang ditransfer (harga + biaya admin + kode unik), bukan harga saja. */}
+                        {/* Yang ditransfer (harga + kode unik; + biaya admin transaksi lama), bukan harga saja. */}
                         {formatRupiah(t.transferTotal)}
                       </p>
                       {t.verificationStatus === 'rejected' && t.rejectionReason && (

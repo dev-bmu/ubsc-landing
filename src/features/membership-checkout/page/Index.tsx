@@ -18,7 +18,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
 
 // ===== /membership/daftar/{planId} — checkout membership lewat web (PRD tambahan 2026-09, tahap C) =====
-// Ringkasan harga, biaya admin, dan tanggal mulai dihitung SERVER (GET .../checkout/:planId) dengan
+// Ringkasan harga, rentang kode unik, dan tanggal mulai dihitung SERVER (GET .../checkout/:planId) dengan
 // aturan yang sama dengan checkout-nya, jadi angka di sini tidak pernah berbeda dari yang ditagih.
 // Per-user penuh (identitas, foto), jadi tidak ada fetch RSC: route shell hanya meneruskan planId.
 //
@@ -157,17 +157,18 @@ export function MembershipCheckoutPage({ planId }: { planId: string }) {
                       <span className="ml-2 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[11px] font-bold text-emerald-300">Warga UB</span>
                     )}
                   </Row>
-                  {data.adminFee > 0 && <Row label="Biaya admin">{rupiah(data.adminFee)}</Row>}
                   <Row label="Kode unik" muted>
-                    3 digit, dibuat saat bayar
+                    {rupiah(data.uniqueCodeMin)}–{rupiah(data.uniqueCodeMax)}, dibuat saat bayar
                   </Row>
                 </dl>
 
                 <div className="mt-4 flex items-start justify-between gap-3 border-t border-white/10 pt-4">
                   <span className="pt-1.5 font-bdo text-sm font-semibold text-white">Total bayar</span>
                   <span className="text-right">
-                    <span className="block font-clash text-2xl font-semibold text-white tabular-nums">{rupiah(data.amount + data.adminFee)}</span>
-                    <span className="font-bdo text-[11px] text-white/45">+ kode unik (maks. {rupiah(data.uniqueCodeMax)})</span>
+                    <span className="block font-clash text-2xl font-semibold text-white tabular-nums">{rupiah(data.amount)}</span>
+                    <span className="font-bdo text-[11px] text-white/45">
+                      + kode unik {rupiah(data.uniqueCodeMin)}–{rupiah(data.uniqueCodeMax)}
+                    </span>
                   </span>
                 </div>
 
