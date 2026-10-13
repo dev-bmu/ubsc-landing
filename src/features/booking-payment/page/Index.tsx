@@ -4,13 +4,14 @@ import { Footer } from '@/components/landing/Footer'
 import { Navbar } from '@/components/landing/Navbar'
 import { authModal, routes } from '@/config/routes'
 import { useAuth } from '@/context/AuthContext'
-import { Banner, ProofUploadForm, TransferInstructions, useCountdown } from '@/components/payment/TransferParts'
+import { showsQr, TicketList, type TicketSession } from '@/components/payment/TicketList'
+import { Banner, paymentTitle, ProofUploadForm, TransferInstructions, useCountdown } from '@/components/payment/TransferParts'
 import axiosInstance from '@/lib/axios'
+import { todayStr } from '@/lib/calendar'
 import type { ApiSuccess, PaymentDetailDto, PaymentRedirectDto } from '@/types/contracts/contracts'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, CheckCircle2, Clock } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { QRCodeSVG } from 'qrcode.react'
 import { useEffect } from 'react'
 
 // ===== /booking/{booking}/pembayaran (client penuh) =====
@@ -69,6 +70,27 @@ export function BookingPaymentPage({ bookingId }: { bookingId: string }) {
   const expired = secondsLeft !== null && secondsLeft <= 0
   const mmss = secondsLeft === null ? null : `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`
 
+  // Booking tunggal dibentuk seperti satu sesi paket supaya keduanya memakai kartu tiket yang sama.
+  const tickets: TicketSession[] = data
+    ? (data.sessions ?? [
+        {
+          id: data.booking.id,
+          dateKey: data.booking.date,
+          time: `${data.booking.startTime} – ${data.booking.endTime}`,
+          unitName: data.booking.unitName,
+          status: data.booking.status,
+          checkedInAt: data.ticket?.checkedInAt ?? null,
+          checkInUrl: data.ticket?.checkInUrl || null
+        }
+      ])
+    : []
+  const allCancelled = tickets.length > 0 && tickets.every((s) => s.status === 'cancelled')
+  // Banner "Tunjukkan QR di bawah" hanya bila memang ada QR di bawah (sesi hari ini / akan datang).
+  const anyQr = tickets.some((s) => showsQr(s, todayStr()))
+  // Admin bisa memindah satu sesi paket ke unit lain: unit lalu ditulis per kartu, bukan di judul.
+  const mixedUnits = new Set(tickets.map((s) => s.unitName ?? null)).size > 1
+  const title = data ? paymentTitle(data.payment, { paid: 'Reservasi Terkonfirmasi', cancelled: 'Reservasi Dibatalkan' }, allCancelled, expired) : ''
+
   return (
     <div className="min-h-screen bg-[#0B0E12]">
       <Navbar />
@@ -76,99 +98,16 @@ export function BookingPaymentPage({ bookingId }: { bookingId: string }) {
       <main className="mx-auto max-w-3xl px-6 pt-32 pb-24 sm:px-10">
         {data && (
           <>
-            <p className="font-bdo text-xs font-semibold tracking-[0.2em] text-accent-red uppercase">{data.payment.receiptNumber}</p>
-            <h1 className="mt-2 font-bdo text-3xl font-semibold text-white sm:text-4xl">Selesaikan Pembayaran</h1>
-
-            <div className="mt-6 rounded-2xl border border-white/10 bg-white/4 p-5 sm:p-6">
-              <p className="font-bdo text-lg font-semibold text-white">
-                {data.booking.facilityName}
-                {data.booking.unitName && <span className="text-neutral-500"> · {data.booking.unitName}</span>}
-              </p>
-              {data.sessions ? (
-                <>
-                  <p className="mt-1 font-bdo text-sm text-neutral-300">Paket {data.sessions.length} sesi · satu kali transfer untuk semuanya</p>
-                  <ul className="mt-4 space-y-2">
-                    {data.sessions.map((s) => (
-                      <li key={s.id} className="flex items-center justify-between gap-3 rounded-xl bg-white/4 px-4 py-2.5">
-                        <span className="min-w-0 font-bdo text-sm text-white/85">
-                          {s.date}
-                          <span className="text-neutral-500"> · {s.time}</span>
-                        </span>
-                        {s.status === 'cancelled' ? (
-                          <span className="shrink-0 rounded-full bg-rose-400/15 px-2.5 py-0.5 font-bdo text-[11px] font-bold text-rose-300">
-                            Dibatalkan
-                          </span>
-                        ) : s.checkedInAt ? (
-                          <span className="shrink-0 rounded-full bg-emerald-400/15 px-2.5 py-0.5 font-bdo text-[11px] font-bold text-emerald-300">
-                            Hadir {s.checkedInAt}
-                          </span>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : (
-                <p className="mt-1 font-bdo text-sm text-neutral-300">
-                  {data.booking.date} · {data.booking.startTime} – {data.booking.endTime}
-                </p>
-              )}
-            </div>
+            <p className="font-bdo text-xs font-semibold tracking-[0.2em] text-accent-red uppercase">Kode booking · {data.payment.receiptNumber}</p>
+            <h1 className="mt-2 font-bdo text-3xl font-semibold text-white sm:text-4xl">{title}</h1>
 
             {/* ── State banners ───────────────────────────────────────── */}
-            {data.payment.paymentStatus === 'PAID' && (
+            {data.payment.paymentStatus === 'PAID' && !allCancelled && (
               <Banner tone="ok" icon={<CheckCircle2 className="h-5 w-5" />}>
-                Pembayaran terkonfirmasi. Reservasi Anda sudah aman — konfirmasi juga dikirim ke email Anda.
+                {anyQr
+                  ? 'Pembayaran lunas. Tunjukkan QR di bawah ke petugas saat datang — konfirmasi juga dikirim ke email Anda.'
+                  : 'Pembayaran lunas. Semua sesi sudah check-in atau sudah lewat — tidak ada QR yang perlu ditunjukkan.'}
               </Banner>
-            )}
-
-            {data.sessions && data.ticket && (
-              <section className="mt-6 rounded-2xl border border-white/10 bg-white/4 p-5 sm:p-6">
-                <h2 className="font-bdo text-sm font-bold tracking-wider text-white/50 uppercase">
-                  Tiket masuk · {data.sessions.filter((s) => s.checkInUrl).length} sesi
-                </h2>
-                <p className="mt-2 font-bdo text-xs text-white/45">Setiap pertemuan punya QR sendiri. Tunjukkan QR sesi hari itu ke petugas.</p>
-                <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
-                  {data.sessions
-                    .filter((s) => s.checkInUrl)
-                    .map((s) => (
-                      <div key={s.id} className="flex flex-col items-center rounded-xl bg-white/4 p-3">
-                        <div className="rounded-lg bg-white p-2">
-                          <QRCodeSVG value={s.checkInUrl as string} size={96} level="M" />
-                        </div>
-                        <p className="mt-2 text-center font-bdo text-[11px] font-semibold text-white/80">{s.date}</p>
-                        <p className="text-center font-bdo text-[11px] text-white/45">{s.time}</p>
-                        {s.checkedInAt && <p className="mt-1 font-bdo text-[10px] font-bold text-emerald-300">Hadir {s.checkedInAt}</p>}
-                      </div>
-                    ))}
-                </div>
-              </section>
-            )}
-
-            {!data.sessions && data.ticket && (
-              <section className="mt-6 rounded-2xl border border-white/10 bg-white/4 p-5 sm:p-6">
-                <h2 className="font-bdo text-sm font-bold tracking-wider text-white/50 uppercase">Tiket masuk</h2>
-                <div className="mt-4 flex flex-col items-center gap-5 sm:flex-row sm:items-start">
-                  <div className="rounded-2xl bg-white p-3">
-                    <QRCodeSVG value={data.ticket.checkInUrl} size={168} level="M" />
-                  </div>
-                  <div className="min-w-0 flex-1 text-center sm:text-left">
-                    <p className="font-bdo text-2xl font-bold tracking-wide text-white">{data.payment.receiptNumber}</p>
-                    <p className="mt-2 font-bdo text-sm leading-relaxed text-white/70">
-                      Tunjukkan QR ini ke petugas saat datang. Petugas memindainya untuk mencatat kehadiran — tidak perlu cetak, cukup dari layar HP.
-                    </p>
-                    {data.ticket.checkedInAt ? (
-                      <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-400/15 px-3 py-1 font-bdo text-xs font-bold text-emerald-300">
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        Check-in {data.ticket.checkedInAt}
-                      </p>
-                    ) : (
-                      <p className="mt-3 font-bdo text-xs text-white/45">
-                        Kalau QR tidak bisa dipindai, sebutkan kode {data.payment.receiptNumber} ke petugas.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </section>
             )}
 
             {data.payment.paymentStatus === 'EXPIRED' && (
@@ -211,11 +150,20 @@ export function BookingPaymentPage({ bookingId }: { bookingId: string }) {
               </Banner>
             )}
 
+            {/* ── Jadwal + tiket QR: satu kartu per sesi, tunggal maupun paket ── */}
+            <TicketList
+              title={data.booking.unitName && !mixedUnits ? `${data.booking.facilityName} · ${data.booking.unitName}` : data.booking.facilityName}
+              subtitle={data.sessions ? `Paket ${data.sessions.length} sesi · satu kali transfer untuk semuanya` : undefined}
+              sessions={tickets}
+              receiptNumber={data.payment.receiptNumber}
+              showUnit={mixedUnits}
+            />
+
             {/* ── Transfer instructions ───────────────────────────────── */}
-            {data.payment.paymentStatus === 'UNPAID' && <TransferInstructions bank={data.bank} qris={data.qris} payment={data.payment} />}
+            {data.payment.paymentStatus === 'UNPAID' && !expired && <TransferInstructions bank={data.bank} qris={data.qris} payment={data.payment} />}
 
             {/* ── Proof upload ────────────────────────────────────────── */}
-            {data.payment.canUpload && (
+            {data.payment.canUpload && !expired && (
               <ProofUploadForm<PaymentDetailDto>
                 endpoint={`/customer/booking/${bookingId}/pembayaran/bukti`}
                 onUploaded={(fresh) => queryClient.setQueryData(['customer-booking-payment', bookingId], fresh)}

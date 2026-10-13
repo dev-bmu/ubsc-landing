@@ -49,6 +49,20 @@ export function useCountdown(iso: string | null) {
   return left
 }
 
+/**
+ * Judul halaman bayar mengikuti status — "Selesaikan Pembayaran" hanya selama memang masih harus bayar.
+ * `done` memberi judul yang khas jenis pembelian (booking / membership) untuk lunas dan batal.
+ * `holdOver`: countdown di layar sudah 0 padahal server belum menyapu transaksinya (masih UNPAID).
+ */
+export function paymentTitle(p: TransferPaymentDto, done: { paid: string; cancelled: string }, cancelled = false, holdOver = false): string {
+  if (p.verificationStatus === 'rejected') return 'Pembayaran Ditolak'
+  if (p.paymentStatus === 'EXPIRED' || holdOver) return 'Waktu Pembayaran Habis'
+  if (cancelled || p.paymentStatus === 'FAILED') return done.cancelled
+  if (p.paymentStatus === 'PAID') return done.paid
+  if (p.verificationStatus === 'awaiting') return 'Menunggu Verifikasi'
+  return 'Selesaikan Pembayaran'
+}
+
 export function CopyButton({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false)
   const timer = useRef<number>(0)

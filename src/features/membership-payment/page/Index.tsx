@@ -2,11 +2,12 @@
 
 import { Footer } from '@/components/landing/Footer'
 import { Navbar } from '@/components/landing/Navbar'
-import { Banner, ProofUploadForm, TransferInstructions, useCountdown } from '@/components/payment/TransferParts'
+import { Banner, paymentTitle, ProofUploadForm, TransferInstructions, useCountdown } from '@/components/payment/TransferParts'
 import { MEMBERSHIP_ENABLED } from '@/config/features'
 import { authModal, routes } from '@/config/routes'
 import { useAuth } from '@/context/AuthContext'
 import axiosInstance from '@/lib/axios'
+import { todayStr } from '@/lib/calendar'
 import type { ApiSuccess, MembershipPaymentDetailDto } from '@/types/contracts/contracts'
 import { formatCalendarDateIntl } from '@/types/contracts/format'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -42,6 +43,17 @@ export function MembershipPaymentPage({ membershipId }: { membershipId: string }
   const secondsLeft = useCountdown(data?.membership.holdExpiresAt ?? null)
   const expired = secondsLeft !== null && secondsLeft <= 0
   const mmss = secondsLeft === null ? null : `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`
+  // Countdown di layar habis sebelum server menyapu transaksinya: jangan biarkan judul/form mengajak transfer.
+  const holdOver = expired && data?.payment.paymentStatus === 'UNPAID' && !data.payment.hasProof
+
+  // Status 'active' tidak pernah diubah ke 'expired' oleh job — berakhir dihitung dari tanggal (sama
+  // seperti coveringMembership di API: startDate <= hari ini <= endDate, inklusif).
+  const m = data?.membership
+  const today = todayStr()
+  const ended = m ? m.status === 'expired' || (m.status === 'active' && m.endDate < today) : false
+  const scheduled = m ? m.status === 'active' && m.startDate > today : false
+  const current = m ? m.status === 'active' && !ended && !scheduled : false
+  const period = m ? `${longDate(m.startDate)} – ${longDate(m.endDate)}` : ''
 
   return (
     <div className="min-h-screen bg-[#0B0E12]">
@@ -50,21 +62,47 @@ export function MembershipPaymentPage({ membershipId }: { membershipId: string }
       <main className="mx-auto max-w-3xl px-6 pt-32 pb-24 sm:px-10">
         {data && (
           <>
-            <p className="font-bdo text-xs font-semibold tracking-[0.2em] text-accent-red uppercase">{data.payment.receiptNumber}</p>
-            <h1 className="mt-2 font-bdo text-3xl font-semibold text-white sm:text-4xl">Pembayaran Membership</h1>
+            <p className="font-bdo text-xs font-semibold tracking-[0.2em] text-accent-red uppercase">
+              Kode pembayaran · {data.payment.receiptNumber}
+            </p>
+            <h1 className="mt-2 font-bdo text-3xl font-semibold text-white sm:text-4xl">
+              {paymentTitle(
+                data.payment,
+                {
+                  paid: ended ? 'Membership Berakhir' : scheduled ? 'Membership Terjadwal' : 'Membership Aktif',
+                  cancelled: data.payment.paymentStatus === 'PAID' ? 'Membership Dibatalkan' : 'Pendaftaran Dibatalkan'
+                },
+                data.membership.status === 'cancelled',
+                holdOver
+              )}
+            </h1>
 
             <div className="mt-6 rounded-2xl border border-white/10 bg-white/4 p-5 sm:p-6">
               <p className="font-bdo text-lg font-semibold text-white">{data.membership.planName}</p>
               <p className="mt-1 font-bdo text-sm text-neutral-300">
                 {data.membership.status === 'active' || data.membership.status === 'expired'
-                  ? `${longDate(data.membership.startDate)} – ${longDate(data.membership.endDate)}`
-                  : 'Masa aktif dimulai saat pembayaran diverifikasi admin.'}
+                  ? period
+                  : data.membership.status === 'cancelled'
+                    ? 'Membership dibatalkan.'
+                    : 'Masa aktif dimulai saat pembayaran diverifikasi admin.'}
               </p>
             </div>
 
-            {data.payment.paymentStatus === 'PAID' && (
+            {data.payment.paymentStatus === 'PAID' && (current || scheduled) && (
               <Banner tone="ok" icon={<CheckCircle2 className="h-5 w-5" />}>
-                Pembayaran terkonfirmasi. Membership Anda aktif {longDate(data.membership.startDate)} – {longDate(data.membership.endDate)}.
+                Pembayaran terkonfirmasi. Membership Anda {current ? 'aktif' : 'mulai aktif'} {period}.
+              </Banner>
+            )}
+
+            {data.payment.paymentStatus === 'PAID' && ended && (
+              <Banner tone="info" icon={<Clock className="h-5 w-5" />}>
+                Masa aktif membership ini sudah berakhir pada {longDate(data.membership.endDate)}.
+              </Banner>
+            )}
+
+            {data.payment.paymentStatus === 'PAID' && data.membership.status === 'cancelled' && (
+              <Banner tone="info" icon={<AlertCircle className="h-5 w-5" />}>
+                Membership ini dibatalkan admin. Hubungi admin bila ada pertanyaan.
               </Banner>
             )}
 
@@ -119,9 +157,11 @@ export function MembershipPaymentPage({ membershipId }: { membershipId: string }
               </Banner>
             )}
 
-            {data.payment.paymentStatus === 'UNPAID' && <TransferInstructions bank={data.bank} qris={data.qris} payment={data.payment} />}
+            {data.payment.paymentStatus === 'UNPAID' && !holdOver && (
+              <TransferInstructions bank={data.bank} qris={data.qris} payment={data.payment} />
+            )}
 
-            {data.payment.canUpload && (
+            {data.payment.canUpload && !holdOver && (
               <ProofUploadForm<MembershipPaymentDetailDto>
                 endpoint={`/customer/memberships/${membershipId}/pembayaran/bukti`}
                 onUploaded={(fresh) => queryClient.setQueryData(queryKey, fresh)}

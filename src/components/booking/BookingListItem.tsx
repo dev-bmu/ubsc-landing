@@ -55,6 +55,7 @@
 
 import { useState, useEffect, type FormEvent } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
+import { CalendarDays } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { FacilityBadge } from '@/components/landing/FacilityBadge'
 import { UnitPicker, type UnitOption } from '@/components/booking/UnitPicker'
@@ -63,7 +64,7 @@ import { authModal, routes } from '@/config/routes'
 import { useAuth } from '@/context/AuthContext'
 import { extractApiError } from '@/lib/applyApiErrors'
 import axiosInstance from '@/lib/axios'
-import { rupiah, todayStr } from '@/lib/calendar'
+import { formatLongDate, rupiah, todayStr } from '@/lib/calendar'
 import { type BookingFees, FeeNote } from './FeeNote'
 import type { ApiSuccess, BookingCreatedDto, CreateBookingRequest } from '@/types/contracts/contracts'
 
@@ -172,17 +173,31 @@ function CalendarUI({
   return (
     <div className="rounded-2xl border border-gray-200 p-6 xl:p-8">
       {/* Date picker */}
-      <div className="mb-6 flex items-center justify-between">
-        <label className="font-bdo text-sm font-medium text-gray-600">Pilih Tanggal</label>
-        <input
-          type="date"
-          value={selectedDate}
-          min={today}
-          onChange={(e) => {
-            if (e.target.value) onDateChange(e.target.value)
-          }}
-          className="rounded-lg border border-gray-200 px-3 py-2 font-bdo text-sm text-gray-700 transition-colors hover:bg-gray-50 focus:border-slate-400 focus:outline-hidden"
-        />
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <span className="font-bdo text-sm font-medium text-gray-600">Pilih Tanggal</span>
+        {/* Input date asli ditumpuk tak terlihat di atas tanggal berbahasa Indonesia: browser menulis
+            nilainya dalam format lokal sendiri (mis. 10/26/2026). */}
+        <label className="relative flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 font-bdo text-sm font-semibold text-gray-800 transition-colors focus-within:border-slate-400 hover:bg-gray-50">
+          <CalendarDays className="h-4 w-4 shrink-0 text-gray-500" />
+          {formatLongDate(selectedDate)}
+          <input
+            type="date"
+            value={selectedDate}
+            min={today}
+            aria-label="Pilih tanggal"
+            onClick={(e) => {
+              try {
+                e.currentTarget.showPicker()
+              } catch {
+                // Browser lama tanpa showPicker tetap membuka picker bawaan saat input diketuk.
+              }
+            }}
+            onChange={(e) => {
+              if (e.target.value) onDateChange(e.target.value)
+            }}
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          />
+        </label>
       </div>
 
       <UnitPicker units={units} selectedUnitId={selectedUnitId} onUnitChange={onUnitChange} />
@@ -559,7 +574,7 @@ export function BookingListItem({
                           <div>
                             <p className="font-bdo text-sm text-gray-500">Slot dipilih · {hours} jam</p>
                             <p className="font-bdo text-lg font-semibold text-black">
-                              {selectedDate} · {selectedStart.startTime} – {selectedEnd.endTime}
+                              {formatLongDate(selectedDate)} · {selectedStart.startTime} – {selectedEnd.endTime}
                             </p>
                           </div>
                           <div className="text-right">

@@ -6,7 +6,9 @@ import { authModal, routes } from '@/config/routes'
 import { useAuth } from '@/context/AuthContext'
 import axiosInstance from '@/lib/axios'
 import type { ApiSuccess, BookingHistoryItemDto, BookingStatus, PaymentStatus } from '@/types/contracts/contracts'
+import { formatLongDate } from '@/lib/calendar'
 import { useQuery } from '@tanstack/react-query'
+import { CalendarDays, Clock } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
@@ -59,6 +61,9 @@ function payLabel(b: BookingHistoryItemDto): string {
   return 'BELUM BAYAR'
 }
 
+/** Admin bisa memindah satu sesi paket ke unit lain; unit lalu ditulis per sesi, bukan di judul. */
+const mixedUnits = (sessions: BookingHistoryItemDto['sessions']) => !!sessions && new Set(sessions.map((s) => s.unitName)).size > 1
+
 export function BookingHistoryPage() {
   const { user, isLoading } = useAuth()
   const router = useRouter()
@@ -110,36 +115,42 @@ export function BookingHistoryPage() {
                     <div className="min-w-0">
                       <p className="font-bdo text-lg font-semibold text-white">
                         {b.facilityName}
-                        {b.unitName ? <span className="text-neutral-500"> · {b.unitName}</span> : null}
+                        {b.unitName && !mixedUnits(b.sessions) ? <span className="text-neutral-500"> · {b.unitName}</span> : null}
                       </p>
-                      <p className="mt-1 font-bdo text-sm text-neutral-300">
-                        {b.sessions
-                          ? `Paket ${b.sessions.length} sesi · ${b.sessions[0].date} – ${b.sessions[b.sessions.length - 1].date}`
-                          : `${b.date} · ${b.startTime} – ${b.endTime}`}
-                      </p>
-                      <p className="mt-1 font-bdo text-xs text-neutral-500">
-                        {b.receipt ?? `#${b.id}`} · dibuat {b.createdAt}
-                      </p>
-                      {b.sessions && (
-                        <details className="group mt-3">
-                          <summary className="cursor-pointer list-none font-bdo text-xs font-semibold text-white/60 transition hover:text-white/90">
-                            Lihat {b.sessions.length} jadwal pertemuan
-                            <span className="ml-1 inline-block transition group-open:rotate-90">›</span>
-                          </summary>
+                      {b.sessions ? (
+                        <>
+                          <p className="mt-1 font-bdo text-sm font-semibold text-neutral-300">Paket {b.sessions.length} sesi</p>
                           <ul className="mt-2 space-y-1.5">
                             {b.sessions.map((s) => (
-                              <li key={s.id} className="flex items-center gap-2 font-bdo text-xs text-white/70">
-                                <span
-                                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${s.status === 'cancelled' ? 'bg-rose-400' : 'bg-emerald-400'}`}
-                                />
+                              <li key={s.id} className="flex items-center gap-2 font-bdo text-sm text-white/85">
+                                <span className={`h-2 w-2 shrink-0 rounded-full ${s.status === 'cancelled' ? 'bg-rose-400' : 'bg-emerald-400'}`} />
                                 <span className={s.status === 'cancelled' ? 'line-through opacity-60' : ''}>
-                                  {s.date} · {s.time}
+                                  {formatLongDate(s.dateKey)}
+                                  <span className="text-neutral-400">
+                                    {' '}
+                                    · {s.time}
+                                    {mixedUnits(b.sessions) && s.unitName ? ` · ${s.unitName}` : ''}
+                                  </span>
                                 </span>
                               </li>
                             ))}
                           </ul>
-                        </details>
+                        </>
+                      ) : (
+                        <>
+                          <p className="mt-2 flex items-center gap-2 font-bdo text-base font-semibold text-white">
+                            <CalendarDays className="h-4 w-4 shrink-0 text-white/50" />
+                            {formatLongDate(b.date)}
+                          </p>
+                          <p className="mt-1 flex items-center gap-2 font-bdo text-sm text-neutral-300">
+                            <Clock className="h-4 w-4 shrink-0 text-white/50" />
+                            {b.startTime} – {b.endTime} WIB
+                          </p>
+                        </>
                       )}
+                      <p className="mt-2 font-bdo text-xs text-neutral-500">
+                        {b.receipt ?? `#${b.id}`} · dibuat {b.createdAt}
+                      </p>
                     </div>
                     <div className="text-right">
                       {/* Yang ditransfer (harga + kode unik; + biaya admin transaksi lama) — angka yang sama dengan halaman pembayaran. */}

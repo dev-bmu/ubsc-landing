@@ -13,6 +13,8 @@
 import { useEffect, useState } from 'react'
 import { CreditCard, ExternalLink, FileText, Loader2, X } from 'lucide-react'
 import axiosInstance from '@/lib/axios'
+import { formatLongDate } from '@/lib/calendar'
+import { formatCalendarDateIntl } from '@/lib/format'
 import { openPrintable } from '@/lib/openPrintable'
 import { cn } from '@/lib/utils'
 import type { ApiSuccess, CustomerTransactionDto, CustomerTransactionIndexDto, InvoiceDto } from '@/types/contracts/contracts'
@@ -45,14 +47,8 @@ function formatRupiah(amount: number) {
   return 'Rp ' + new Intl.NumberFormat('id-ID').format(amount)
 }
 
-function formatDate(dateStr: string | null) {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleDateString('id-ID', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  })
-}
+/** "YYYY-MM-DD" (atau "YYYY-MM-DD HH:mm:ss" WIB) -> "26 Oktober 2026", tanpa menggeser zona. */
+const formatDate = (key: string | null) => formatCalendarDateIntl(key, { day: 'numeric', month: 'long', year: 'numeric' })
 
 /** Baris membership tidak punya fasilitas: judulnya paket, tanggalnya masa aktif. */
 function titleFor(t: CustomerTransactionDto): string {
@@ -61,7 +57,7 @@ function titleFor(t: CustomerTransactionDto): string {
 
 function dateFor(t: CustomerTransactionDto): string {
   if (t.membershipPeriod) return `${formatDate(t.membershipPeriod.startDate)} – ${formatDate(t.membershipPeriod.endDate)}`
-  return formatDate(t.bookingDate ?? t.createdAt)
+  return t.bookingDate ? formatLongDate(t.bookingDate) : formatDate(t.createdAt)
 }
 
 async function openInvoice(t: CustomerTransactionDto) {
